@@ -1,0 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,700&family=Inter:wght@300;400;500;600&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --background: #F4F2ED;
+  --foreground: #111110;
+  --card: #ECEAE4;
+  --card-foreground: #111110;
+  --primary: #111110;
+  --primary-foreground: #F4F2ED;
+  --secondary: #E5E3DD;
+  --secondary-foreground: #111110;
+  --muted: #E5E3DD;
+  --muted-foreground: #63615A;
+  --accent: #C4895A;
+  --accent-foreground: #F4F2ED;
+  --border: rgba(17, 17, 16, 0.12);
+  --ring: #C4895A;
+  --radius: 2px;
+}
+
+.dark {
+  --background: #111110;
+  --foreground: #F4F2ED;
+  --card: #1C1C1A;
+  --card-foreground: #F4F2ED;
+  --primary: #F4F2ED;
+  --primary-foreground: #111110;
+  --secondary: #222220;
+  --secondary-foreground: #F4F2ED;
+  --muted: #222220;
+  --muted-foreground: #888580;
+  --accent: #C4895A;
+  --accent-foreground: #F4F2ED;
+  --border: rgba(244, 242, 237, 0.1);
+  --ring: #C4895A;
+  --radius: 2px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Hide the native cursor only on precise-pointer devices where the custom
+   cursor renders. Touch / coarse-pointer devices keep the native pointer so
+   there are no dead taps or missing affordances. */
+@media (hover: hover) and (pointer: fine) {
+  *, *::before, *::after {
+    cursor: none !important;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+.font-body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Skip-to-content link — visually hidden until keyboard-focused */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  transform: translateY(-160%);
+  transition: transform 0.2s ease;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Nav link underline animation */
+.nav-link {
+  position: relative;
+  transition: color 0.25s ease;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--foreground);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Project image hover */
+.project-image-wrap {
+  overflow: hidden;
+}
+.project-image-wrap img {
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.project-image-wrap:hover img {
+  transform: scale(1.04);
+}
+
+/* Hairline divider */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Accent dot */
+.accent-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: middle;
+  animation: dot-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(0.55); }
+}
+
+/* CTA arrow hover */
+.cta-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: gap 0.25s ease;
+}
+.cta-arrow:hover {
+  gap: 14px;
+}
+
+/* Skill item hover */
+.skill-item {
+  transition: color 0.2s ease;
+}
+.skill-item:hover {
+  color: var(--accent);
+}
+
+/* Contact link hover */
+.contact-link {
+  transition: color 0.2s ease, letter-spacing 0.2s ease;
+}
+.contact-link:hover {
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+/* Project title — group-hover accent shift */
+.project-title {
+  transition: color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.group:hover .project-title {
+  color: var(--accent);
+}
+
+/* Table row hover */
+.list-row {
+  transition: background-color 0.22s ease, padding-left 0.22s ease;
+}
+.list-row:hover {
+  background-color: var(--card);
+  padding-left: 12px;
+}
+
+/* Keyboard focus — the custom cursor hides the native pointer, so keyboard
+   users get an explicit accent ring instead. Mouse clicks don't trigger it. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
+/* Fade images in once decoded to avoid a hard pop as lazy images arrive */
+.project-image-wrap img {
+  animation: img-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes img-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Respect reduced-motion: calm decorative loops and morph-y transitions */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .accent-dot { animation: none; }
+  .project-image-wrap img { animation: none; }
+  .project-image-wrap:hover img { transform: none; }
+}
