@@ -150,9 +150,25 @@ body {
 /* Project image hover */
 .project-image-wrap {
   overflow: hidden;
+  /* Use a consistent image frame (16:10) so screenshots crop uniformly.
+     `height` on the element is sometimes set inline; prefer aspect-ratio and
+     cap with max-height to preserve responsive scaling. The `!important`
+     allows this rule to take precedence over the inline clamp(...) heights
+     while keeping the rest of the layout untouched. */
+  aspect-ratio: 16 / 10;
+  height: auto !important;
+  max-height: clamp(240px, 36vw, 580px);
+  display: block;
+  position: relative;
 }
 .project-image-wrap img {
   transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Ensure images fill the frame without distortion and are center-cropped */
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
 }
 .project-image-wrap:hover img {
   transform: scale(1.04);
