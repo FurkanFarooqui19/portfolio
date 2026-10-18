@@ -184,6 +184,7 @@ export interface ProjectItem {
   architecture: string
   outcomes: string
   tradeoff?: string
+  benchmarkSetup?: string
   workflow?: { step: string; title: string; subtitle: string }[]
   href: string
   github?: string
@@ -207,9 +208,9 @@ const projects: ProjectItem[] = [
     description:
       "Engineered a high-performance Python/FastAPI information retrieval search engine featuring custom BM25 probabilistic ranking, TF-IDF vector space modeling, and hybrid ranking algorithms, benchmarked through a Cranfield evaluation framework.",
     image: `${BASE_PATH}/images/SearchForge.webp`,
-    metric: "Live on Vercel · 3.3ms Latency",
+    metric: "Live on Vercel · 3.3ms p50 Ranking",
     stats: [
-      { label: "Latency", value: "3.3ms Avg" },
+      { label: "Ranking Latency", value: "3.3ms p50" },
       { label: "NDCG@10", value: "0.74 Score" },
       { label: "MRR", value: "0.90" },
       { label: "Framework", value: "React 19 + FastAPI" },
@@ -225,7 +226,7 @@ const projects: ProjectItem[] = [
       "Tailwind CSS",
     ],
     highlights: [
-      "Engineered a Python/FastAPI IR search engine with custom BM25, TF-IDF and hybrid ranking, achieving 3.3ms average latency",
+      "Engineered a Python/FastAPI IR search engine with custom BM25, TF-IDF and hybrid ranking, achieving 3.3ms p50 ranking engine latency",
       "Built a Cranfield evaluation framework with 336 relevance judgements, achieving 0.74 NDCG@10, 0.66 Precision@10, and 0.90 MRR",
       "Developed a React 19 + TypeScript search dashboard with algorithm comparison and query analytics",
     ],
@@ -234,9 +235,11 @@ const projects: ProjectItem[] = [
     architecture:
       "Inverted index IR architecture built in Python/FastAPI implementing custom BM25 with length normalization, TF-IDF cosine vector ranking, and convex combination hybrid scoring. Benchmarked via a formal Cranfield test collection with 336 human relevance judgements and wrapped in a React 19 + TypeScript query analytics dashboard.",
     outcomes:
-      "Achieved an ultra-fast 3.3ms query latency, 0.74 NDCG@10, 0.66 Precision@10, and 0.90 MRR with real-time algorithm side-by-side metric visualizations.",
+      "Achieved 3.3ms p50 in-memory ranking engine latency, 0.74 NDCG@10, 0.66 Precision@10, and 0.90 MRR with real-time algorithm side-by-side metric visualizations.",
     tradeoff:
-      "Chose an in-memory Python inverted index and custom BM25 scoring engine over an external Elasticsearch cluster. This eliminated JVM/daemon overhead, reduced cold query latency to 3.3ms, and avoided multi-container orchestration costs on Vercel Edge — at the tradeoff of bounded corpus size fitting within single-node RAM.",
+      "Chose an in-memory Python inverted index and custom BM25 scoring engine over an external Elasticsearch cluster. This eliminated JVM/daemon overhead, reduced cold query ranking latency to 3.3ms p50, and avoided multi-container orchestration costs on Vercel Edge — at the tradeoff of bounded corpus size fitting within single-node RAM.",
+    benchmarkSetup:
+      "Benchmarked on the standard Cranfield IR test collection (1,400 documents, 225 queries, 336 human relevance judgements). The 3.3ms p50 figure strictly measures in-engine algorithmic ranking execution time (query tokenization, postings traversal, BM25 score accumulation, and min-heap top-k extraction), excluding outer HTTP network transit / browser RTT.",
     workflow: [
       { step: "01", title: "Client Query", subtitle: "FastAPI Edge REST" },
       { step: "02", title: "Tokenize & Clean", subtitle: "Regex & Stopwords" },
@@ -255,7 +258,7 @@ const projects: ProjectItem[] = [
         title: "Min-Heap Top-K",
         subtitle: "O(N log K) Extraction",
       },
-      { step: "06", title: "3.3ms Response", subtitle: "Ranked JSON Payload" },
+      { step: "06", title: "3.3ms p50 Ranking", subtitle: "Top-K Extracted" },
     ],
     href: "https://e-commerce-product-search-system.vercel.app/",
     github: "https://github.com/FurkanFarooqui19",
@@ -1346,7 +1349,7 @@ function Hero({
                 <span className="text-[var(--accent)] font-mono font-medium">
                   01
                 </span>
-                <span>Flagship SearchForge (3.3ms IR)</span>
+                <span>Flagship SearchForge (3.3ms p50 IR)</span>
                 <span className="text-[var(--muted-foreground)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all text-[10px]">
                   ↗
                 </span>
@@ -1590,13 +1593,13 @@ function Hero({
 
                       <div className="p-3 rounded-sm border border-[var(--border)] bg-[var(--background)]">
                         <span className="font-body text-[10px] tracking-widest uppercase block mb-1 text-[var(--muted-foreground)]">
-                          Search Query Latency
+                          Ranking Latency
                         </span>
                         <span className="font-display font-medium text-lg sm:text-xl block text-[var(--foreground)]">
                           3.3ms p50
                         </span>
                         <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
-                          Inverted Index Algorithm
+                          BM25 Engine (Excl. RTT)
                         </span>
                       </div>
 
@@ -1968,7 +1971,7 @@ function FeaturedProjectCard({
             </div>
 
             {/* 4-Box Telemetry Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
               {project.stats.map((st, i) => (
                 <div key={i} className="project-stat-box">
                   <span
@@ -1986,6 +1989,32 @@ function FeaturedProjectCard({
                 </div>
               ))}
             </div>
+
+            {/* Benchmark Setup Callout */}
+            {project.benchmarkSetup && (
+              <div
+                className="mb-6 p-3 rounded-xs border flex items-start gap-2.5"
+                style={{
+                  backgroundColor: "var(--card)",
+                  borderColor: "rgba(196, 137, 90, 0.25)",
+                }}
+              >
+                <span className="text-[var(--accent)] font-mono text-xs shrink-0 mt-0.5">⏱</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider font-semibold text-[var(--accent)]">
+                      Benchmark Setup
+                    </span>
+                    <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-xs border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]">
+                      RANKING ALONE · EXCLUDES NETWORK RTT
+                    </span>
+                  </div>
+                  <p className="font-body text-[11px] leading-relaxed text-[var(--muted-foreground)]">
+                    {project.benchmarkSetup}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Tech Stack Chips */}
             <div className="flex flex-wrap gap-1.5 mb-8">
@@ -2757,6 +2786,43 @@ function ProjectDetailModal({
           </div>
         )}
 
+        {/* Benchmark Setup & Methodology */}
+        {project.benchmarkSetup && (
+          <div
+            className="mb-8 p-4 sm:p-5 rounded-[var(--radius)] border relative overflow-hidden"
+            style={{
+              backgroundColor: "var(--card)",
+              borderColor: "var(--border)",
+            }}
+          >
+            <div className="flex items-start gap-3.5">
+              <div
+                className="w-8 h-8 rounded-sm flex items-center justify-center shrink-0 text-sm font-mono"
+                style={{
+                  backgroundColor: "var(--background)",
+                  border: "1px solid var(--border)",
+                  color: "var(--accent)",
+                }}
+              >
+                ⏱
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span className="font-mono text-[11px] font-semibold tracking-wider uppercase text-[var(--accent)]">
+                    Benchmark Setup &amp; Methodology
+                  </span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-xs border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]">
+                    RANKING ALONE · EXCLUDES NETWORK RTT
+                  </span>
+                </div>
+                <p className="font-body text-xs leading-relaxed text-[var(--foreground)]">
+                  {project.benchmarkSetup}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Key Technical Highlights */}
         <div
           className="mb-8 p-6 rounded"
@@ -3199,7 +3265,7 @@ function CommandPalette({
       id: "proj-searchforge",
       category: "Projects",
       title: "SearchForge IR Engine (Live Demo)",
-      subtitle: "3.3ms Latency · BM25 + TF-IDF Hybrid · Vercel Edge",
+      subtitle: "3.3ms p50 Ranking · BM25 + TF-IDF Hybrid · Vercel Edge",
       shortcut: "↗ Launch",
       icon: <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />,
       perform: () =>
@@ -4033,7 +4099,7 @@ function AboutNarrative({
 
 function About() {
   const metrics = [
-    { value: "3.3ms", label: "IR Search Latency", sub: "Custom BM25 Engine" },
+    { value: "3.3ms", label: "p50 Ranking Latency", sub: "BM25 Inverted Index" },
     { value: "06", label: "Live Systems", sub: "Vercel, AWS & Render" },
     { value: "100+", label: "Tracked Projects", sub: "Matrix3D Internship" },
     { value: "2027", label: "B.E. Computer Eng", sub: "Univ. of Mumbai" },
@@ -4221,7 +4287,7 @@ function Skills() {
       title: "Information Retrieval & Applied AI",
       summary:
         "Inverted index search architectures, probabilistic BM25 ranking, empirical Cranfield evaluation, and multimodal vision pipelines.",
-      metricBadge: "3.3ms Latency · 0.74 NDCG",
+      metricBadge: "3.3ms p50 Ranking · 0.74 NDCG",
       flagships: [
         {
           name: "BM25 & TF-IDF Ranking",
@@ -4272,7 +4338,7 @@ function Skills() {
         },
       ],
       featuredProjects: [
-        { name: "SearchForge Engine", tag: "3.3ms IR" },
+        { name: "SearchForge Engine", tag: "3.3ms p50 IR" },
         { name: "AI Drug Warning", tag: "Gemini Vision" },
         { name: "Skin Disease Detection", tag: "PyTorch 94.8%" },
       ],
@@ -4289,7 +4355,7 @@ function Skills() {
         {
           name: "FastAPI (Python)",
           spec: "High-throughput async Python microservices with Pydantic contract validation",
-          metric: "3.3ms Latency",
+          metric: "3.3ms p50 Ranking",
         },
         {
           name: "Python Backend Engineering",
