@@ -670,12 +670,35 @@ function Nav({
 }) {
   const [scrolled, setScrolled] = useState(false)
   const [active, setActive] = useState<string>("")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
+
+  // Close mobile menu when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  // Close mobile menu on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [mobileMenuOpen])
 
   // Scroll spy — marks whichever nav section is currently active; maps certs to exp
   useEffect(() => {
@@ -713,13 +736,15 @@ function Nav({
     <motion.nav
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
       style={{
-        backgroundColor: scrolled
-          ? "color-mix(in srgb, var(--background) 88%, transparent)"
-          : "transparent",
-        backdropFilter: scrolled ? "blur(12px)" : "none",
-        borderBottom: scrolled
-          ? "1px solid var(--border)"
-          : "1px solid transparent",
+        backgroundColor:
+          scrolled || mobileMenuOpen
+            ? "color-mix(in srgb, var(--background) 92%, transparent)"
+            : "transparent",
+        backdropFilter: scrolled || mobileMenuOpen ? "blur(14px)" : "none",
+        borderBottom:
+          scrolled || mobileMenuOpen
+            ? "1px solid var(--border)"
+            : "1px solid transparent",
       }}
       initial={{ y: -48, opacity: 0 }}
       animate={{ y: introActive ? -48 : 0, opacity: introActive ? 0 : 1 }}
@@ -741,7 +766,7 @@ function Nav({
           </span>
         </a>
 
-        <div className="flex items-center gap-4 sm:gap-6 md:gap-8">
+        <div className="flex items-center gap-3 sm:gap-6 md:gap-8">
           <div className="hidden md:flex items-center gap-6 lg:gap-8">
             {NAV_ITEMS.map(({ label, id }) => (
               <a
@@ -943,8 +968,182 @@ function Nav({
               </>
             )}
           </button>
+
+          {/* Mobile Menu Hamburger Toggle (Visible only on < md) */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="md:hidden flex flex-col items-center justify-center w-8 h-8 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+            aria-expanded={mobileMenuOpen}
+            aria-label="Toggle navigation menu"
+          >
+            <div className="w-3.5 h-2.5 relative flex flex-col justify-between">
+              <span
+                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${
+                  mobileMenuOpen ? "rotate-45 translate-y-[4.5px]" : ""
+                }`}
+              />
+              <span
+                className={`w-full h-[1.5px] bg-current rounded-full transition-opacity duration-150 ${
+                  mobileMenuOpen ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${
+                  mobileMenuOpen ? "-rotate-45 -translate-y-[4.5px]" : ""
+                }`}
+              />
+            </div>
+          </button>
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop overlay for outside tap */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="md:hidden fixed inset-0 top-14 bg-black/50 backdrop-blur-xs z-40"
+              aria-hidden="true"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden relative z-50 overflow-hidden border-t border-[var(--border)] shadow-2xl"
+              style={{
+                backgroundColor:
+                  "color-mix(in srgb, var(--background) 97%, transparent)",
+                backdropFilter: "blur(20px)",
+              }}
+            >
+            <div className="px-6 py-6 space-y-5 max-w-lg mx-auto">
+              {/* Section Links */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-mono tracking-widest uppercase text-[var(--muted-foreground)] mb-2 px-3">
+                  00 // Section Navigation
+                </p>
+                {NAV_ITEMS.map(({ label, id }, idx) => {
+                  const isActive = active === id
+                  return (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setMobileMenuOpen(false)
+                        setTimeout(() => {
+                          const target = document.getElementById(id)
+                          if (target) {
+                            target.scrollIntoView({ behavior: "smooth" })
+                          }
+                        }, 60)
+                      }}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-[var(--radius)] font-body text-xs tracking-wider uppercase transition-all ${
+                        isActive
+                          ? "bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 font-medium"
+                          : "text-[var(--foreground)] hover:bg-[var(--card)] hover:text-[var(--accent)]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                          0{idx + 1}
+                        </span>
+                        <span className="font-medium">{label}</span>
+                      </div>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
+                      )}
+                    </a>
+                  )
+                })}
+              </div>
+
+              {/* Mobile Quick Action Strip */}
+              <div className="pt-4 border-t border-[var(--border)] space-y-2.5">
+                <a
+                  href="https://drive.google.com/uc?export=download&id=1GFm2sa7MQjxvG_6LFVIOzrOZxZiffKu4"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-body tracking-wider uppercase text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                >
+                  <span>Download CV</span>
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <path
+                      d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </a>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href="https://github.com/FurkanFarooqui19"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                      <path d="M9 18c-4.51 2-5-2-7-2" />
+                    </svg>
+                    <span>GitHub</span>
+                  </a>
+
+                  <a
+                    href="https://linkedin.com/in/furkan-farooqui"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                      <rect width="4" height="12" x="2" y="9" />
+                      <circle cx="4" cy="4" r="2" />
+                    </svg>
+                    <span>LinkedIn</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
     </motion.nav>
   )
 }
@@ -3678,6 +3877,160 @@ function Work() {
 
 // ─── About ────────────────────────────────────────────────────────────────────
 
+function ScrollyParagraph({
+  children,
+  phase,
+  index,
+}: {
+  children: React.ReactNode
+  phase: string
+  index: number
+}) {
+  const pRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: pRef,
+    offset: ["start 88%", "start 48%"],
+  })
+
+  const opacity = useTransform(scrollYProgress, [0, 0.85], [0.26, 1])
+  const y = useTransform(scrollYProgress, [0, 1], [10, 0])
+  const filter = useTransform(
+    scrollYProgress,
+    [0, 0.85],
+    ["blur(1.2px)", "blur(0px)"],
+  )
+
+  return (
+    <motion.div
+      ref={pRef}
+      style={{ opacity, y, filter }}
+      className="space-y-1.5 transition-colors duration-200"
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--accent)] font-medium">
+          {phase}
+        </span>
+        <span className="text-[var(--border)]">·</span>
+        <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+          0{index}
+        </span>
+      </div>
+      <div className="font-body text-sm sm:text-base leading-relaxed text-[var(--foreground)]">
+        {children}
+      </div>
+    </motion.div>
+  )
+}
+
+function AboutNarrative({
+  metrics,
+}: {
+  metrics: { value: string; label: string; sub: string }[]
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 75%", "end 55%"],
+  })
+
+  const railScaleY = useTransform(scrollYProgress, [0, 1], [0, 1])
+
+  return (
+    <div ref={containerRef} className="relative pl-6 sm:pl-8 space-y-8">
+      {/* Editorial Reading Guide Rail */}
+      <div
+        className="absolute left-0 top-1 bottom-24 w-[2px] bg-[var(--border)] rounded-full pointer-events-none"
+        aria-hidden="true"
+      >
+        <motion.div
+          className="absolute top-0 left-0 right-0 origin-top rounded-full"
+          style={{
+            scaleY: railScaleY,
+            height: "100%",
+            background:
+              "linear-gradient(to bottom, var(--accent) 0%, var(--accent) 100%)",
+            boxShadow: "0 0 10px rgba(196, 137, 90, 0.5)",
+          }}
+        />
+      </div>
+
+      {/* Narrative Phase 01 */}
+      <ScrollyParagraph phase="ACADEMIC FOUNDATIONS" index={1}>
+        <p className="text-[var(--muted-foreground)]">
+          I&apos;m a Mumbai-based software engineer and undergraduate
+          pursuing a{" "}
+          <strong className="text-[var(--foreground)] font-semibold">
+            B.E. in Computer Engineering (2023–2027)
+          </strong>{" "}
+          at Mumbai University. My technical journey is shaped by a deep
+          curiosity for how large-scale software systems operate under the
+          hood.
+        </p>
+      </ScrollyParagraph>
+
+      {/* Narrative Phase 02 */}
+      <ScrollyParagraph phase="FIRST-PRINCIPLES AI & SYSTEMS" index={2}>
+        <p className="text-[var(--muted-foreground)]">
+          Rather than treating modern AI as a superficial abstraction or
+          relying on trivial API wrappers, I build from foundational
+          principles: implementing custom{" "}
+          <strong className="text-[var(--accent)] font-semibold">
+            BM25 and TF-IDF probabilistic ranking algorithms
+          </strong>
+          , validating search relevance through formal Cranfield test
+          frameworks, and optimizing async microservices in Python and
+          FastAPI to sustain{" "}
+          <strong className="text-[var(--foreground)] font-semibold">
+            sub-5ms query latencies
+          </strong>
+          .
+        </p>
+      </ScrollyParagraph>
+
+      {/* Narrative Phase 03 */}
+      <ScrollyParagraph phase="PRODUCTION ENTERPRISE IMPACT" index={3}>
+        <p className="text-[var(--muted-foreground)]">
+          During my software engineering internship at{" "}
+          <strong className="text-[var(--accent)] font-semibold">
+            Matrix3D Infocom
+          </strong>
+          , I shipped production vulnerability management dashboards,
+          streamlined bulk data pipelines, and engineered fast search and
+          filtering across{" "}
+          <strong className="text-[var(--foreground)] font-semibold">
+            100+ enterprise client repositories
+          </strong>
+          . I bring that same dedication to code architecture, interface
+          accessibility, and user-centered ergonomics to every system I
+          deploy.
+        </p>
+      </ScrollyParagraph>
+
+      {/* Quick Proof Telemetry Metrics Bar */}
+      <div className="pt-6 border-t border-[var(--border)]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {metrics.map((m) => (
+            <div
+              key={m.label}
+              className="p-3.5 rounded-sm border border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--accent)]"
+            >
+              <span className="font-display font-medium text-xl sm:text-2xl block text-[var(--accent)]">
+                {m.value}
+              </span>
+              <span className="font-body text-xs font-medium block text-[var(--foreground)] mt-0.5">
+                {m.label}
+              </span>
+              <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
+                {m.sub}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function About() {
   const metrics = [
     { value: "3.3ms", label: "IR Search Latency", sub: "Custom BM25 Engine" },
@@ -3729,72 +4082,13 @@ function About() {
 
         {/* 2-Column Editorial Grid: Narrative & Academic Dossier */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start mb-0">
-          {/* Left Column: Narrative Story & Engineering Principles */}
-          <FadeUp className="lg:col-span-7 space-y-6" delay={0.15}>
-            <div
-              className="space-y-5 font-body text-sm sm:text-base leading-relaxed"
-              style={{ color: "var(--muted-foreground)" }}
-            >
-              <p>
-                I&apos;m a Mumbai-based software engineer and undergraduate
-                pursuing a{" "}
-                <strong style={{ color: "var(--foreground)" }}>
-                  B.E. in Computer Engineering (2023–2027)
-                </strong>{" "}
-                at Mumbai University. My technical journey is shaped by a deep
-                curiosity for how large-scale software systems operate under the
-                hood.
-              </p>
-              <p>
-                Rather than treating modern AI as a superficial abstraction or
-                relying on trivial API wrappers, I build from foundational
-                principles: implementing custom{" "}
-                <strong style={{ color: "var(--foreground)" }}>
-                  BM25 and TF-IDF probabilistic ranking algorithms
-                </strong>
-                , validating search relevance through formal Cranfield test
-                frameworks, and optimizing async microservices in Python and
-                FastAPI to sustain sub-5ms query latencies.
-              </p>
-              <p>
-                During my software engineering internship at{" "}
-                <strong style={{ color: "var(--foreground)" }}>
-                  Matrix3D Infocom
-                </strong>
-                , I shipped production vulnerability management dashboards,
-                streamlined bulk data pipelines, and engineered fast search and
-                filtering across 100+ enterprise client repositories. I bring
-                that same dedication to code architecture, interface
-                accessibility, and user-centered ergonomics to every system I
-                deploy.
-              </p>
-            </div>
-
-            {/* Quick Proof Telemetry Metrics Bar */}
-            <div className="pt-6 border-t border-[var(--border)]">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {metrics.map((m) => (
-                  <div
-                    key={m.label}
-                    className="p-3.5 rounded-sm border border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--accent)]"
-                  >
-                    <span className="font-display font-medium text-xl sm:text-2xl block text-[var(--accent)]">
-                      {m.value}
-                    </span>
-                    <span className="font-body text-xs font-medium block text-[var(--foreground)] mt-0.5">
-                      {m.label}
-                    </span>
-                    <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
-                      {m.sub}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeUp>
+          {/* Left Column: Scrollytelling Narrative Story */}
+          <div className="lg:col-span-7">
+            <AboutNarrative metrics={metrics} />
+          </div>
 
           {/* Right Column: Academic & Industry Credentials Card */}
-          <FadeUp className="lg:col-span-5" delay={0.25}>
+          <FadeUp className="lg:col-span-5 lg:sticky lg:top-20 self-start" delay={0.25}>
             <div
               className="p-6 sm:p-7 rounded-[var(--radius)] border border-[var(--border)] relative"
               style={{ backgroundColor: "var(--card)" }}
@@ -3909,6 +4203,7 @@ function About() {
 function Skills() {
   const [activeTab, setActiveTab] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeDomainInView, setActiveDomainInView] = useState<string>("ai")
 
   const categories = [
     { id: "all", label: "All Domains" },
@@ -4182,6 +4477,32 @@ function Skills() {
     )
   })
 
+  // Observe active domain in view as user scrolls
+  useEffect(() => {
+    const domainIds = ["domain-ai", "domain-backend", "domain-frontend", "domain-cloud"]
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id.replace("domain-", "")
+            setActiveDomainInView(id)
+          }
+        })
+      },
+      {
+        rootMargin: "-15% 0px -40% 0px",
+        threshold: 0.1,
+      }
+    )
+
+    domainIds.forEach((id) => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+
+    return () => observer.disconnect()
+  }, [filteredDomains])
+
   return (
     <section
       id="skills"
@@ -4210,196 +4531,228 @@ function Skills() {
           </div>
         </FadeUp>
 
-        {/* Big Editorial Statement */}
-        <FadeUp delay={0.1}>
-          <div className="max-w-3xl mb-12 md:mb-16">
-            <h2
-              className="font-display font-normal leading-[1.08] tracking-tight mb-4"
-              style={{
-                fontSize: "clamp(28px, 4.4vw, 56px)",
-                letterSpacing: "-0.025em",
-                color: "var(--foreground)",
-              }}
-            >
-              Architectural domains engineered for latency, algorithmic depth,
-              and scale.
-            </h2>
-            <p className="font-body text-sm sm:text-base leading-relaxed text-[var(--muted-foreground)]">
-              Organized into 4 core disciplines—balancing sub-5ms latency,
-              rigorous empirical evaluation, and full-stack production
-              craftsmanship.
-            </p>
-          </div>
-        </FadeUp>
+        {/* 2-Column Editorial Magazine Layout with Sticky Left Anchor */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 xl:gap-14 items-start">
+          {/* Left Column: Sticky Anchor Hub */}
+          <div className="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-20 self-start space-y-6">
+            {/* Big Editorial Statement */}
+            <div>
+              <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--accent)] block mb-2 font-medium">
+                DISCIPLINE DIRECTORY
+              </span>
+              <h2
+                className="font-display font-normal leading-[1.1] tracking-tight mb-3"
+                style={{
+                  fontSize: "clamp(26px, 3.2vw, 42px)",
+                  letterSpacing: "-0.02em",
+                  color: "var(--foreground)",
+                }}
+              >
+                Architectural domains engineered for latency &amp; scale.
+              </h2>
+              <p className="font-body text-xs sm:text-sm leading-relaxed text-[var(--muted-foreground)]">
+                Organized into 4 core disciplines—balancing sub-5ms query response,
+                empirical Cranfield evaluation, and production craftsmanship.
+              </p>
+            </div>
 
-        {/* Interactive Controls Bar: Filter Tabs + Live Search Input */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pb-6 mb-8 border-b border-[var(--border)]">
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
-            {categories.map((cat) => {
-              const isActive = activeTab === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveTab(cat.id)}
-                  className="relative px-3.5 py-1.5 text-xs font-body tracking-wider uppercase whitespace-nowrap transition-colors cursor-pointer"
-                  style={{
-                    color: isActive
-                      ? "var(--foreground)"
-                      : "var(--muted-foreground)",
-                  }}
+            {/* Interactive Domain Scroll Spy Navigation Tracker */}
+            <div className="p-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] space-y-2">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border)]">
+                <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--muted-foreground)]">
+                  Live Domain Tracker
+                </span>
+                <span className="font-mono text-[10px] text-[var(--accent)]">
+                  {filteredDomains.length} ACTIVE
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {architecturalDomains.map((domain) => {
+                  const isActive = activeDomainInView === domain.id
+                  const isMatchingFilter = filteredDomains.some((d) => d.id === domain.id)
+                  return (
+                    <button
+                      key={domain.id}
+                      type="button"
+                      onClick={() => {
+                        const target = document.getElementById(`domain-${domain.id}`)
+                        if (target) {
+                          target.scrollIntoView({ behavior: "smooth" })
+                        }
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-sm text-left transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-[var(--background)] border border-[var(--accent)] shadow-xs"
+                          : "hover:bg-[var(--background)]/60 border border-transparent"
+                      } ${!isMatchingFilter ? "opacity-40" : "opacity-100"}`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={`font-mono text-xs ${
+                            isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--muted-foreground)]"
+                          }`}
+                        >
+                          {domain.num}
+                        </span>
+                        <span
+                          className={`font-body text-xs truncate ${
+                            isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--muted-foreground)]"
+                          }`}
+                        >
+                          {domain.domain}
+                        </span>
+                      </div>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)] shrink-0 ml-2" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Real-Time Search Box */}
+            <div className="space-y-2">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted-foreground)] pointer-events-none"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <span className="relative z-10 flex items-center gap-1.5">
-                    <span>{cat.label}</span>
-                  </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeSkillTab"
-                      className="absolute inset-0 rounded-[var(--radius)] border border-[var(--border)] shadow-sm"
-                      style={{ backgroundColor: "var(--card)" }}
-                      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                    />
-                  )}
-                </button>
-              )
-            })}
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    if (e.target.value.trim() && activeTab !== "all") {
+                      setActiveTab("all")
+                    }
+                  }}
+                  placeholder="Filter by tech or pattern..."
+                  className="w-full pl-9 pr-8 py-2 text-xs font-body rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {categories.map((cat) => {
+                  const isActive = activeTab === cat.id
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveTab(cat.id)}
+                      className={`px-2.5 py-1 text-[11px] font-body rounded-sm border transition-all cursor-pointer ${
+                        isActive
+                          ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] font-medium shadow-xs"
+                          : "border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)]"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Quick Summary Pill Bar */}
+            <div className="pt-2 flex items-center justify-between text-[11px] font-mono text-[var(--muted-foreground)] border-t border-[var(--border)]">
+              <span>28 TECHNOLOGIES</span>
+              <span className="text-[var(--accent)]">FULL SPEC AUDITED</span>
+            </div>
           </div>
 
-          {/* Real-Time Search Box */}
-          <div className="relative min-w-[260px] sm:w-72">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted-foreground)] pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                if (e.target.value.trim() && activeTab !== "all") {
-                  setActiveTab("all")
-                }
-              }}
-              placeholder="Search tech, tool, or pattern..."
-              className="w-full pl-9 pr-8 py-1.5 text-xs font-body rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer"
-                title="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Results Counter if filtered */}
-        {(searchQuery || activeTab !== "all") && (
-          <div className="flex items-center justify-between text-xs font-mono text-[var(--muted-foreground)] mb-6">
-            <span>
-              Showing {filteredDomains.length} of {architecturalDomains.length}{" "}
-              domains
-              {searchQuery && ` matching "${searchQuery}"`}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("all")
-                setSearchQuery("")
-              }}
-              className="text-[var(--accent)] hover:underline cursor-pointer"
-            >
-              Reset filters
-            </button>
-          </div>
-        )}
-
-        {/* 4 Architectural Domains Grid (2x2 on desktop, 1-col on mobile) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AnimatePresence mode="popLayout">
-            {filteredDomains.map((domain, i) => (
-              <motion.div
-                key={domain.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.35, delay: i * 0.05 }}
-                className="p-6 sm:p-7 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] transition-all duration-300 hover:border-[var(--accent)] flex flex-col justify-between group"
-              >
-                <div>
+          {/* Right Column: Scrolling Domain Dossier Stream */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-8">
+            <AnimatePresence mode="popLayout">
+              {filteredDomains.map((domain, i) => (
+                <motion.div
+                  key={domain.id}
+                  id={`domain-${domain.id}`}
+                  layout
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.4, delay: i * 0.06 }}
+                  className="p-6 sm:p-8 md:p-9 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] transition-all duration-300 hover:border-[var(--accent)] group"
+                >
                   {/* Domain Header Row */}
-                  <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-[var(--border)]">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-mono text-sm font-semibold text-[var(--accent)]">
+                  <div className="flex items-center justify-between pb-4 mb-5 border-b border-[var(--border)]">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-base font-semibold text-[var(--accent)]">
                         {domain.num}
                       </span>
-                      <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--muted-foreground)]">
+                      <span className="font-mono text-xs tracking-widest uppercase text-[var(--muted-foreground)] font-medium">
                         {domain.domain}
                       </span>
                     </div>
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--accent)] font-medium">
+                    <span className="font-mono text-[10px] px-2.5 py-1 rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--accent)] font-medium">
                       {domain.metricBadge}
                     </span>
                   </div>
 
                   {/* Domain Title & Mission */}
-                  <h3 className="font-display font-medium text-xl sm:text-2xl text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors mb-2">
+                  <h3 className="font-display font-medium text-2xl sm:text-3xl text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors mb-3">
                     {domain.title}
                   </h3>
-                  <p className="font-body text-xs sm:text-sm leading-relaxed text-[var(--muted-foreground)] mb-6">
+                  <p className="font-body text-sm sm:text-base leading-relaxed text-[var(--muted-foreground)] mb-7">
                     {domain.summary}
                   </p>
 
-                  {/* Core Flagships List */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
+                  {/* Core Flagships List (2-column grid inside the wide card) */}
+                  <div className="mb-7">
+                    <div className="flex items-center justify-between mb-3.5">
                       <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--muted-foreground)]">
-                        Core Specializations &amp; Rigor
+                        Core Specializations &amp; Production Rigor
                       </span>
-                      <span className="font-mono text-[9px] text-[var(--accent)]">
-                        PROD TESTED
+                      <span className="font-mono text-[10px] text-[var(--accent)]">
+                        PRODUCTION VERIFIED
                       </span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {domain.flagships.map((flagship) => (
                         <div
                           key={flagship.name}
-                          className="p-2.5 rounded-sm border border-[var(--border)] bg-[var(--background)] flex items-start justify-between gap-3 group/item hover:border-[var(--accent)] transition-colors"
+                          className="p-3 rounded-sm border border-[var(--border)] bg-[var(--background)] flex flex-col justify-between gap-2 group/item hover:border-[var(--accent)] transition-colors"
                         >
-                          <div className="min-w-0">
-                            <span className="font-body text-xs font-medium text-[var(--foreground)] group-hover/item:text-[var(--accent)] transition-colors block">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-body text-xs font-semibold text-[var(--foreground)] group-hover/item:text-[var(--accent)] transition-colors">
                               {flagship.name}
                             </span>
-                            <span className="font-body text-[11px] text-[var(--muted-foreground)] block mt-0.5 truncate">
-                              {flagship.spec}
-                            </span>
+                            {flagship.metric && (
+                              <span className="font-mono text-[10px] text-[var(--accent)] px-1.5 py-0.5 rounded-xs bg-[var(--card)] border border-[var(--border)] whitespace-nowrap shrink-0">
+                                {flagship.metric}
+                              </span>
+                            )}
                           </div>
-                          {flagship.metric && (
-                            <span className="font-mono text-[10px] text-[var(--accent)] px-1.5 py-0.5 rounded-xs bg-[var(--card)] border border-[var(--border)] whitespace-nowrap shrink-0">
-                              {flagship.metric}
-                            </span>
-                          )}
+                          <span className="font-body text-[11px] text-[var(--muted-foreground)] leading-relaxed">
+                            {flagship.spec}
+                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Ecosystem & Supporting Tooling */}
-                  <div className="mb-6">
-                    <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] block mb-2.5">
+                  {/* Extended Ecosystem & Tooling */}
+                  <div className="mb-7">
+                    <span className="font-mono text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] block mb-3">
                       Extended Ecosystem &amp; Tooling
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -4429,62 +4782,62 @@ function Skills() {
                       ))}
                     </div>
                   </div>
-                </div>
 
-                {/* Footer: Proven In Projects */}
-                <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between text-xs gap-3 flex-wrap">
-                  <span className="font-mono text-[10px] tracking-wider uppercase text-[var(--muted-foreground)]">
-                    Proven in:
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {domain.featuredProjects.map((p) => (
-                      <a
-                        key={p.name}
-                        href="#work"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          document
-                            .getElementById("work")
-                            ?.scrollIntoView({ behavior: "smooth" })
-                        }}
-                        className="font-mono text-[10px] text-[var(--accent)] hover:underline inline-flex items-center gap-1 bg-[var(--background)] px-2 py-0.5 rounded-sm border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
-                      >
-                        <span>{p.name}</span>
-                        <span className="text-[var(--muted-foreground)]">
-                          ({p.tag})
-                        </span>
-                        <span>↗</span>
-                      </a>
-                    ))}
+                  {/* Footer: Proven In Projects */}
+                  <div className="pt-4 border-t border-[var(--border)] flex items-center justify-between text-xs gap-3 flex-wrap">
+                    <span className="font-mono text-[10px] tracking-wider uppercase text-[var(--muted-foreground)]">
+                      Proven in production:
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {domain.featuredProjects.map((p) => (
+                        <a
+                          key={p.name}
+                          href="#work"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            document
+                              .getElementById("work")
+                              ?.scrollIntoView({ behavior: "smooth" })
+                          }}
+                          className="font-mono text-[10px] text-[var(--accent)] hover:underline inline-flex items-center gap-1 bg-[var(--background)] px-2.5 py-1 rounded-sm border border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                        >
+                          <span>{p.name}</span>
+                          <span className="text-[var(--muted-foreground)]">
+                            ({p.tag})
+                          </span>
+                          <span>↗</span>
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
 
-        {/* Empty Search State */}
-        {filteredDomains.length === 0 && (
-          <div className="py-16 text-center border border-dashed border-[var(--border)] rounded-[var(--radius)]">
-            <p className="font-display text-lg text-[var(--foreground)] mb-1">
-              No matching technologies or domains found
-            </p>
-            <p className="font-body text-xs text-[var(--muted-foreground)] mb-4">
-              Try searching for &quot;Python&quot;, &quot;FastAPI&quot;,
-              &quot;BM25&quot;, &quot;Docker&quot;, or reset filters.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("all")
-                setSearchQuery("")
-              }}
-              className="px-4 py-2 text-xs font-body rounded-[var(--radius)] border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] transition-colors cursor-pointer"
-            >
-              Reset All Filters
-            </button>
+            {/* Empty Search State */}
+            {filteredDomains.length === 0 && (
+              <div className="py-16 text-center border border-dashed border-[var(--border)] rounded-[var(--radius)]">
+                <p className="font-display text-lg text-[var(--foreground)] mb-1">
+                  No matching technologies or domains found
+                </p>
+                <p className="font-body text-xs text-[var(--muted-foreground)] mb-4">
+                  Try searching for &quot;Python&quot;, &quot;FastAPI&quot;,
+                  &quot;BM25&quot;, &quot;Docker&quot;, or reset filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("all")
+                    setSearchQuery("")
+                  }}
+                  className="px-4 py-2 text-xs font-body rounded-[var(--radius)] border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)] transition-colors cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </section>
   )
@@ -4492,11 +4845,186 @@ function Skills() {
 
 // ─── Experience ───────────────────────────────────────────────────────────────
 
+function ExperienceTimelineItem({
+  exp,
+  index,
+}: {
+  exp: ExperienceItem
+  index: number
+}) {
+  const rowRef = useRef<HTMLDivElement>(null)
+  const isRowInView = useInView(rowRef, { margin: "-18% 0px -28% 0px" })
+
+  return (
+    <div ref={rowRef} className="relative pl-8 sm:pl-14 md:pl-16 group">
+      {/* Milestone Anchor Node on the rail */}
+      <div
+        className="absolute left-3.5 sm:left-6 md:left-8 -translate-x-1/2 top-7 sm:top-8 md:top-9 z-20 pointer-events-none flex items-center justify-center"
+        aria-hidden="true"
+      >
+        {/* Radar pulse ping effect when active in view or hovered */}
+        <span
+          className={`absolute w-7 h-7 rounded-full transition-all duration-500 pointer-events-none ${
+            isRowInView
+              ? "bg-[var(--accent)]/20 animate-ping opacity-75"
+              : "opacity-0 group-hover:opacity-40 group-hover:bg-[var(--accent)]/15 group-hover:animate-ping"
+          }`}
+        />
+
+        {/* Outer Ring Housing */}
+        <div
+          className={`relative w-6 h-6 rounded-full border-2 bg-[var(--background)] transition-all duration-300 flex items-center justify-center ${
+            isRowInView
+              ? "border-[var(--accent)] shadow-[0_0_14px_rgba(0,255,136,0.45)] scale-110"
+              : "border-[var(--border)] group-hover:border-[var(--accent)] group-hover:shadow-[0_0_10px_rgba(0,255,136,0.3)]"
+          }`}
+        >
+          {/* Inner Core Bead */}
+          <div
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              isRowInView
+                ? "bg-[var(--accent)] scale-125 shadow-[0_0_8px_var(--accent)]"
+                : "bg-[var(--muted-foreground)] group-hover:bg-[var(--accent)]"
+            }`}
+          />
+        </div>
+      </div>
+
+      {/* Horizontal Circuit Bridge (Connecting Rail to Card on sm+) */}
+      <div
+        className={`hidden sm:block absolute left-6 md:left-8 top-10 sm:top-11 md:top-12 h-[1px] w-8 md:w-8 transition-all duration-300 pointer-events-none ${
+          isRowInView
+            ? "bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]"
+            : "bg-[var(--border)] group-hover:bg-[var(--accent)]"
+        }`}
+        aria-hidden="true"
+      />
+
+      {/* Experience Card */}
+      <motion.div
+        className="p-6 sm:p-8 md:p-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--accent)]"
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-40px" }}
+        transition={{
+          duration: 0.6,
+          ease: [0.22, 1, 0.36, 1],
+          delay: index * 0.12,
+        }}
+      >
+        {/* Card Window Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-[var(--border)]">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="font-display text-xs tracking-wider text-[var(--accent)] font-mono">
+                ROLE // 0{index + 1}
+              </span>
+              <span className="text-[var(--border)]">·</span>
+              <span className="font-mono text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]">
+                {exp.location}
+              </span>
+            </div>
+            <h3 className="font-display font-medium text-xl sm:text-2xl md:text-3xl text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+              {exp.role}
+            </h3>
+            <p className="font-body text-sm sm:text-base font-medium text-[var(--accent)] mt-1">
+              {exp.org}
+            </p>
+          </div>
+
+          <div className="flex flex-col lg:items-end gap-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-sm border border-[var(--border)] bg-[var(--background)]">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  backgroundColor: exp.badgeColor || "var(--accent)",
+                }}
+              />
+              <span className="font-mono text-[10px] tracking-wider uppercase text-[var(--foreground)] font-medium">
+                {exp.badge}
+              </span>
+            </div>
+            <span className="font-mono text-xs text-[var(--muted-foreground)]">
+              {exp.period}
+            </span>
+          </div>
+        </div>
+
+        {/* Summary Lead */}
+        <p className="font-body text-sm sm:text-base leading-relaxed text-[var(--foreground)] mb-6">
+          {exp.summary}
+        </p>
+
+        {/* 4 Impact Telemetry Stat Boxes */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          {exp.metrics.map((m) => (
+            <div
+              key={m.label}
+              className="p-3 sm:p-3.5 rounded-sm border border-[var(--border)] bg-[var(--background)] transition-colors group-hover:border-[var(--accent)]"
+            >
+              <span className="font-display font-medium text-lg sm:text-xl block text-[var(--accent)]">
+                {m.value}
+              </span>
+              <span className="font-body text-[11px] font-medium block text-[var(--muted-foreground)] mt-0.5">
+                {m.label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Contributions / Bullets */}
+        <div className="mb-8">
+          <span className="font-body text-[10px] tracking-widest uppercase block mb-3 text-[var(--muted-foreground)]">
+            Key Engineering Contributions &amp; Scope
+          </span>
+          <ul className="space-y-3 font-body text-xs sm:text-sm leading-relaxed text-[var(--muted-foreground)]">
+            {exp.contributions.map((bullet, bi) => (
+              <li key={bi} className="flex items-start gap-2.5">
+                <span className="text-[var(--accent)] text-xs mt-1 font-mono">
+                  ▸
+                </span>
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Technologies Applied */}
+        <div className="pt-5 border-t border-[var(--border)]">
+          <span className="font-body text-[10px] tracking-widest uppercase block mb-2.5 text-[var(--muted-foreground)]">
+            Stack &amp; Methodologies Applied
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {exp.technologies.map((tech) => (
+              <span
+                key={tech}
+                className="px-2.5 py-1 text-[11px] font-body rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition-colors hover:border-[var(--accent)]"
+              >
+                {tech}
+              </span>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 function Experience() {
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: timelineRef,
+    offset: ["start 75%", "end 60%"],
+  })
+
+  // Laser beam height from 0% to 100%
+  const beamHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"])
+  const headOpacity = useTransform(scrollYProgress, [0, 0.05, 0.95, 1], [0, 1, 1, 0.3])
+
   return (
     <section
       id="exp"
-      className="py-28 md:py-36"
+      className="py-28 md:py-36 relative overflow-hidden"
       style={{
         borderTop: "1px solid var(--border)",
         backgroundColor: "var(--background)",
@@ -4544,116 +5072,56 @@ function Experience() {
           </div>
         </FadeUp>
 
-        {/* Experience Timeline Cards */}
-        <div className="space-y-8">
-          {experience.map((exp, i) => (
+        {/* Living Timeline Container */}
+        <div ref={timelineRef} className="relative">
+          {/* Static Track Rail (Background vertical guideline) */}
+          <div
+            className="absolute left-3.5 sm:left-6 md:left-8 top-3 bottom-6 w-[2px] -translate-x-1/2 bg-[var(--border)] rounded-full pointer-events-none"
+            aria-hidden="true"
+          >
+            {/* Hash ticks along the rail */}
+            <div className="absolute inset-0 bg-[radial-gradient(#ffffff20_1px,transparent_1px)] [background-size:2px_12px] opacity-70" />
+          </div>
+
+          {/* Dynamic Laser Beam (Follows user scroll) */}
+          <motion.div
+            className="absolute left-3.5 sm:left-6 md:left-8 top-3 w-[2px] -translate-x-1/2 rounded-full pointer-events-none origin-top z-10"
+            style={{
+              height: beamHeight,
+              background:
+                "linear-gradient(to bottom, rgba(0, 255, 136, 0.05) 0%, rgba(0, 255, 136, 0.6) 60%, var(--accent) 100%)",
+              boxShadow:
+                "0 0 10px 1px var(--accent), 0 0 20px 2px rgba(0, 255, 136, 0.35)",
+            }}
+            aria-hidden="true"
+          >
+            {/* Laser Head / Luminous Photon Tip */}
             <motion.div
-              key={exp.role}
-              className="p-6 sm:p-8 md:p-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--accent)] group"
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{
-                duration: 0.6,
-                ease: [0.22, 1, 0.36, 1],
-                delay: i * 0.12,
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-3.5 h-3.5 rounded-full pointer-events-none flex items-center justify-center"
+              style={{
+                opacity: headOpacity,
               }}
             >
-              {/* Card Window Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 mb-6 border-b border-[var(--border)]">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="font-display text-xs tracking-wider text-[var(--accent)] font-mono">
-                      ROLE // 0{i + 1}
-                    </span>
-                    <span className="text-[var(--border)]">·</span>
-                    <span className="font-mono text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]">
-                      {exp.location}
-                    </span>
-                  </div>
-                  <h3 className="font-display font-medium text-xl sm:text-2xl md:text-3xl text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
-                    {exp.role}
-                  </h3>
-                  <p className="font-body text-sm sm:text-base font-medium text-[var(--accent)] mt-1">
-                    {exp.org}
-                  </p>
-                </div>
-
-                <div className="flex flex-col lg:items-end gap-2">
-                  <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-sm border border-[var(--border)] bg-[var(--background)]">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{
-                        backgroundColor: exp.badgeColor || "var(--accent)",
-                      }}
-                    />
-                    <span className="font-mono text-[10px] tracking-wider uppercase text-[var(--foreground)] font-medium">
-                      {exp.badge}
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-[var(--muted-foreground)]">
-                    {exp.period}
-                  </span>
-                </div>
-              </div>
-
-              {/* Summary Lead */}
-              <p className="font-body text-sm sm:text-base leading-relaxed text-[var(--foreground)] mb-6">
-                {exp.summary}
-              </p>
-
-              {/* 4 Impact Telemetry Stat Boxes */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-                {exp.metrics.map((m) => (
-                  <div
-                    key={m.label}
-                    className="p-3 sm:p-3.5 rounded-sm border border-[var(--border)] bg-[var(--background)] transition-colors group-hover:border-[var(--accent)]"
-                  >
-                    <span className="font-display font-medium text-lg sm:text-xl block text-[var(--accent)]">
-                      {m.value}
-                    </span>
-                    <span className="font-body text-[11px] font-medium block text-[var(--muted-foreground)] mt-0.5">
-                      {m.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Detailed Contributions / Bullets */}
-              <div className="mb-8">
-                <span className="font-body text-[10px] tracking-widest uppercase block mb-3 text-[var(--muted-foreground)]">
-                  Key Engineering Contributions &amp; Scope
-                </span>
-                <ul className="space-y-3 font-body text-xs sm:text-sm leading-relaxed text-[var(--muted-foreground)]">
-                  {exp.contributions.map((bullet, bi) => (
-                    <li key={bi} className="flex items-start gap-2.5">
-                      <span className="text-[var(--accent)] text-xs mt-1 font-mono">
-                        ▸
-                      </span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Technologies Applied */}
-              <div className="pt-5 border-t border-[var(--border)]">
-                <span className="font-body text-[10px] tracking-widest uppercase block mb-2.5 text-[var(--muted-foreground)]">
-                  Stack &amp; Methodologies Applied
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {exp.technologies.map((tech) => (
-                    <span
-                      key={tech}
-                      className="px-2.5 py-1 text-[11px] font-body rounded-sm border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] transition-colors hover:border-[var(--accent)]"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              {/* Pulsing Flare */}
+              <div
+                className="absolute inset-0 rounded-full animate-pulse"
+                style={{
+                  backgroundColor: "var(--accent)",
+                  boxShadow:
+                    "0 0 12px 3px var(--accent), 0 0 28px 6px rgba(0, 255, 136, 0.6)",
+                }}
+              />
+              {/* Laser Core */}
+              <div className="relative w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_#fff]" />
             </motion.div>
-          ))}
+          </motion.div>
+
+          {/* Cards List */}
+          <div className="space-y-10 sm:space-y-12">
+            {experience.map((exp, i) => (
+              <ExperienceTimelineItem key={exp.role} exp={exp} index={i} />
+            ))}
+          </div>
         </div>
       </div>
     </section>
