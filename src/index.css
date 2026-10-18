@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,700&family=Inter:wght@300;400;500;600&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
@@ -74,6 +73,7 @@ body {
   font-weight: 400;
   line-height: 1.6;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Hide the native cursor only on precise-pointer devices where the custom
@@ -128,51 +128,80 @@ body {
   outline-offset: 2px;
 }
 
-/* Nav link underline animation */
+/* Nav link styling */
 .nav-link {
   position: relative;
   transition: color 0.25s ease;
 }
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: var(--foreground);
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.nav-link:hover::after {
-  width: 100%;
+.nav-link:hover {
+  color: var(--foreground) !important;
 }
 
-/* Project image hover */
-.project-image-wrap {
-  overflow: hidden;
-  /* Use a consistent image frame (16:10) so screenshots crop uniformly.
-     `height` on the element is sometimes set inline; prefer aspect-ratio and
-     cap with max-height to preserve responsive scaling. The `!important`
-     allows this rule to take precedence over the inline clamp(...) heights
-     while keeping the rest of the layout untouched. */
-  aspect-ratio: 16 / 10;
-  height: auto !important;
-  max-height: clamp(240px, 36vw, 580px);
-  display: block;
-  position: relative;
+/* Project containers */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
 }
-.project-image-wrap img {
-  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-  /* Ensure images fill the frame without distortion and are center-cropped */
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center center;
+.project-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.project-image-wrap:hover img {
-  transform: scale(1.04);
+.project-card:hover {
+  background: var(--secondary);
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.08);
 }
+.dark .project-card:hover {
+  box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.6);
+}
+
+.project-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: var(--muted-foreground);
+  transition: all 0.2s ease;
+}
+.project-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.project-window-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background-color: var(--background);
+  border-bottom: 1px solid var(--border);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.project-stat-box {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--background);
+  transition: border-color 0.2s ease;
+}
+.project-stat-box:hover {
+  border-color: var(--accent);
+}
+
 
 /* Hairline divider */
 .divider {
@@ -250,19 +279,15 @@ body {
   border-radius: 1px;
 }
 
-/* Fade images in once decoded to avoid a hard pop as lazy images arrive */
-.project-image-wrap img {
-  animation: img-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes img-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
 /* Respect reduced-motion: calm decorative loops and morph-y transitions */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .accent-dot { animation: none; }
-  .project-image-wrap img { animation: none; }
-  .project-image-wrap:hover img { transform: none; }
+  .project-card:hover { transform: none; }
+}
+
+@media (max-width: 767px) {
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
 }

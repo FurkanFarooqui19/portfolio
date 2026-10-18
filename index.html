@@ -31,6 +31,10 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400;1,9..144,700&family=Inter:wght@300;400;500;600&display=swap"
+    />
 
     <!-- Favicons -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -111,6 +115,66 @@
 
     <!-- Google Search Console -->
     <meta name="google-site-verification" content="HWRYkZsUkLzC6-bTEI7EV11T8_gYZONHqKm1fendizg" />
+
+    <!-- Structured Data (JSON-LD) for Google Knowledge Graph & Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://furkanfarooqui19.github.io/portfolio/#website",
+          "url": "https://furkanfarooqui19.github.io/portfolio/",
+          "name": "Furkan Farooqui — Software Engineer & AI Developer",
+          "description": "Portfolio of Furkan Farooqui — specializing in low-latency search systems, applied AI, and high-performance full-stack web platforms.",
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "ProfilePage",
+          "@id": "https://furkanfarooqui19.github.io/portfolio/#profilepage",
+          "url": "https://furkanfarooqui19.github.io/portfolio/",
+          "name": "Furkan Farooqui Portfolio",
+          "isPartOf": { "@id": "https://furkanfarooqui19.github.io/portfolio/#website" },
+          "mainEntity": { "@id": "https://furkanfarooqui19.github.io/portfolio/#person" }
+        },
+        {
+          "@type": "Person",
+          "@id": "https://furkanfarooqui19.github.io/portfolio/#person",
+          "name": "Furkan Farooqui",
+          "alternateName": "Furkan Ahmed Farooqui",
+          "url": "https://furkanfarooqui19.github.io/portfolio/",
+          "image": "https://furkanfarooqui19.github.io/portfolio/og-image.png",
+          "jobTitle": "Software Engineer & AI Developer",
+          "worksFor": {
+            "@type": "Organization",
+            "name": "Independent Software Engineer"
+          },
+          "alumniOf": {
+            "@type": "EducationalOrganization",
+            "name": "University of Mumbai"
+          },
+          "knowsAbout": [
+            "Information Retrieval",
+            "BM25 Ranking",
+            "Full-Stack Web Development",
+            "Applied Artificial Intelligence",
+            "FastAPI",
+            "Python",
+            "React",
+            "TypeScript",
+            "Next.js",
+            "Computer Vision"
+          ],
+          "sameAs": [
+            "https://github.com/FurkanFarooqui19",
+            "https://linkedin.com/in/furkan-farooqui",
+            "https://x.com/furkanfarooqui_"
+          ],
+          "email": "mailto:furkanahmedfarooqui19@gmail.com"
+        }
+      ]
+    }
+    </script>
 
     <!-- Vite Entry -->
     <script type="module" src="/src/main.tsx"></script>
