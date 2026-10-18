@@ -177,14 +177,14 @@ export interface ProjectItem {
   description: string
   image: string
   metric: string
-  stats: { label: string value: string }[]
+  stats: { label: string; value: string }[]
   tags: string[]
   highlights: string[]
   challenge: string
   architecture: string
   outcomes: string
   tradeoff?: string
-  workflow?: { step: string title: string subtitle: string }[]
+  workflow?: { step: string; title: string; subtitle: string }[]
   href: string
   github?: string
   isLive?: boolean
@@ -528,7 +528,7 @@ export interface ExperienceItem {
   badge: string
   badgeColor?: string
   summary: string
-  metrics: { label: string value: string }[]
+  metrics: { label: string; value: string }[]
   contributions: string[]
   technologies: string[]
 }
@@ -1658,6 +1658,12 @@ function FeaturedProjectCard({
   onOpenDetails: (p: ProjectItem) => void
 }) {
   const displayUrl = project.href.replace(/^https?:\/\//, "").replace(/\/$/, "")
+  const imageFrameRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: imageFrameRef,
+    offset: ["start end", "end start"],
+  })
+  const imageY = useTransform(scrollYProgress, [0, 1], [-22, 22])
 
   return (
     <motion.div
@@ -1907,17 +1913,26 @@ function FeaturedProjectCard({
               </a>
             </div>
 
-            {/* Screenshot Frame with Interactive Hover Zoom */}
-            <div className="relative aspect-[16/10] overflow-hidden bg-[var(--card)]">
-              <img
-                src={project.image}
-                alt={`${project.title} live interface preview`}
-                className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
-                loading="lazy"
-                decoding="async"
-                width={800}
-                height={500}
-              />
+            {/* Screenshot Frame with Interactive Hover Zoom & Parallax */}
+            <div
+              ref={imageFrameRef}
+              className="relative aspect-[16/10] overflow-hidden bg-[var(--card)] cursor-pointer"
+              onClick={() => onOpenDetails(project)}
+            >
+              <motion.div
+                style={{ y: imageY }}
+                className="w-full h-full will-change-transform"
+              >
+                <img
+                  src={project.image}
+                  alt={`${project.title} live interface preview`}
+                  className="w-full h-full object-cover object-top scale-105 transition-transform duration-700 ease-out group-hover:scale-110"
+                  loading="lazy"
+                  decoding="async"
+                  width={800}
+                  height={500}
+                />
+              </motion.div>
 
               {/* HUD Telemetry Overlay on Hover */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 pointer-events-none">
@@ -1947,6 +1962,13 @@ function ProjectGridCard({
   index: number
   onOpenDetails: (p: ProjectItem) => void
 }) {
+  const imageFrameRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: imageFrameRef,
+    offset: ["start end", "end start"],
+  })
+  const imageY = useTransform(scrollYProgress, [0, 1], [-16, 16])
+
   return (
     <motion.article
       className="project-card flex flex-col justify-between overflow-hidden group"
@@ -1986,8 +2008,9 @@ function ProjectGridCard({
           </span>
         </div>
 
-        {/* Preview Screenshot Frame */}
+        {/* Preview Screenshot Frame with Parallax */}
         <div
+          ref={imageFrameRef}
           className="relative aspect-[16/10] overflow-hidden bg-[var(--background)] cursor-pointer"
           onClick={() => onOpenDetails(project)}
           role="button"
@@ -2000,16 +2023,21 @@ function ProjectGridCard({
           }}
           aria-label={`View ${project.title} details`}
         >
-          <img
-            src={project.image}
-            alt={`${project.title} preview`}
-            className="w-full h-full object-cover object-top transition-transform duration-600 ease-out group-hover:scale-105"
-            loading="lazy"
-            decoding="async"
-            width={640}
-            height={400}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-3 text-white text-[10px] font-body">
+          <motion.div
+            style={{ y: imageY }}
+            className="w-full h-full will-change-transform"
+          >
+            <img
+              src={project.image}
+              alt={`${project.title} preview`}
+              className="w-full h-full object-cover object-top scale-105 transition-transform duration-600 ease-out group-hover:scale-110"
+              loading="lazy"
+              decoding="async"
+              width={640}
+              height={400}
+            />
+          </motion.div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-3 text-white text-[10px] font-body pointer-events-none">
             <span>View Architecture</span>
             <span>↗</span>
           </div>
@@ -5635,7 +5663,7 @@ function IntroOverlay({
 // One word, split into letters that rise + unblur in a stagger. Lives inside the
 // layoutId <h1>; the letters settle before the morph fires, so the shared-layout
 // travel is unaffected.
-function IntroWord({ text, start }: { text: string start: number }) {
+function IntroWord({ text, start }: { text: string; start: number }) {
   return (
     <span style={{ display: "inline-block" }}>
       {text.split("").map((ch, i) => (
