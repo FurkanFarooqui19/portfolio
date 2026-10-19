@@ -737,13 +737,13 @@ function Nav({
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+      className="fixed top-0 left-0 right-0 z-[9950] transition-all duration-500"
       style={{
         backgroundColor:
           scrolled || mobileMenuOpen
-            ? "color-mix(in srgb, var(--background) 92%, transparent)"
+            ? "color-mix(in srgb, var(--background) 95%, transparent)"
             : "transparent",
-        backdropFilter: scrolled || mobileMenuOpen ? "blur(14px)" : "none",
+        backdropFilter: scrolled || mobileMenuOpen ? "blur(16px)" : "none",
         borderBottom:
           scrolled || mobileMenuOpen
             ? "1px solid var(--border)"
@@ -1012,7 +1012,7 @@ function Nav({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="md:hidden fixed inset-0 top-14 bg-black/50 backdrop-blur-xs z-40"
+              className="md:hidden fixed inset-0 top-14 bg-black/60 backdrop-blur-xs z-[9949]"
               aria-hidden="true"
             />
 
@@ -1021,11 +1021,10 @@ function Nav({
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="md:hidden relative z-50 overflow-hidden border-t border-[var(--border)] shadow-2xl"
+              className="md:hidden relative z-[9951] overflow-hidden border-t border-[var(--border)] shadow-2xl"
               style={{
-                backgroundColor:
-                  "color-mix(in srgb, var(--background) 97%, transparent)",
-                backdropFilter: "blur(20px)",
+                backgroundColor: "var(--background)",
+                backdropFilter: "blur(24px)",
               }}
             >
             <div className="px-6 py-6 space-y-5 max-w-lg mx-auto">
@@ -6263,6 +6262,13 @@ export default function App() {
   // curtain overlay so the leftward travel is actually visible.
   const [nameSettling, setNameSettling] = useState(false)
 
+  // Dedicated effect ensuring nameSettling always resets cleanly after 1300ms
+  useEffect(() => {
+    if (!nameSettling) return
+    const t = setTimeout(() => setNameSettling(false), 1300)
+    return () => clearTimeout(t)
+  }, [nameSettling])
+
   // Shared cursor state — listener is active only during the intro.
   const parallax = usePointerParallax(introActive)
   // Gentle name drift — applied to a WRAPPER, never the layoutId <h1>, so the
@@ -6279,19 +6285,15 @@ export default function App() {
 
     // 2.2s: name reveals 0–1.0s → subtitle scrambles at 0.9s → progress fills by 2.1s →
     // 100ms hold → curtain lifts at 2.2s in sync with the 1.15s name morph.
-    const t1 = setTimeout(() => {
+    const t = setTimeout(() => {
       setIntroActive(false)
       setNameSettling(true)
       document.body.style.overflow = ""
       sessionStorage.setItem("ff-intro-played", "1")
     }, 2200)
 
-    // Release the name back to normal flow once the 1.15s morph has finished.
-    const t2 = setTimeout(() => setNameSettling(false), 2200 + 1300)
-
     return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
+      clearTimeout(t)
       document.body.style.overflow = ""
     }
   }, [introActive])
@@ -6302,7 +6304,6 @@ export default function App() {
     setNameSettling(true)
     document.body.style.overflow = ""
     sessionStorage.setItem("ff-intro-played", "1")
-    setTimeout(() => setNameSettling(false), 1300)
   }
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
