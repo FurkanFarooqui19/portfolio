@@ -1406,6 +1406,170 @@ function Nav({
   )
 }
 
+// ─── Custom Cursor ───────────────────────────────────────────────────────────
+
+function CustomCursor() {
+  // Single raw motion value — both dot and ring track the same source
+  const rawX = useMotionValue(-200)
+  const rawY = useMotionValue(-200)
+
+  // Dot: snappy spring
+  const dotX = useSpring(rawX, { stiffness: 800, damping: 42, mass: 0.08 })
+  const dotY = useSpring(rawY, { stiffness: 800, damping: 42, mass: 0.08 })
+
+  // Ring: slow trailing spring
+  const ringRawX = useMotionValue(-200)
+  const ringRawY = useMotionValue(-200)
+  const ringX = useSpring(ringRawX, { stiffness: 110, damping: 22, mass: 0.35 })
+  const ringY = useSpring(ringRawY, { stiffness: 110, damping: 22, mass: 0.35 })
+
+  // Bake -50% centering into the motion value (avoids transform conflict with x/y)
+  const DOT_HALF  = 3   // 6px dot / 2
+  const RING_HALF = 18  // 36px ring / 2
+  const centeredDotX  = useTransform(dotX,  (v) => v - DOT_HALF)
+  const centeredDotY  = useTransform(dotY,  (v) => v - DOT_HALF)
+  const centeredRingX = useTransform(ringX, (v) => v - RING_HALF)
+  const centeredRingY = useTransform(ringY, (v) => v - RING_HALF)
+
+  const [isHovering, setIsHovering] = useState(false)
+  // Use ref to avoid stale closure in mousemove handler
+  const visibleRef = useRef(false)
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Only enable on desktop fine-pointer devices
+  const isFine =
+    typeof window !== "undefined"
+      ? window.matchMedia("(hover: hover) and (pointer: fine)").matches
+      : false
+
+  useEffect(() => {
+    if (!isFine) return
+
+    // Inject cursor:none on ALL elements so nothing can override it
+    const style = document.createElement("style")
+    style.id = "ff-cursor-none"
+    style.textContent = "*, *::before, *::after { cursor: none !important; }"
+    document.head.appendChild(style)
+
+    const onMove = (e: MouseEvent) => {
+      rawX.set(e.clientX)
+      rawY.set(e.clientY)
+      ringRawX.set(e.clientX)
+      ringRawY.set(e.clientY)
+      if (!visibleRef.current) {
+        visibleRef.current = true
+        setIsVisible(true)
+      }
+    }
+
+    const onOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      setIsHovering(
+        !!target.closest("a, button, [role='button'], input, textarea, select, label")
+      )
+    }
+
+    window.addEventListener("mousemove", onMove, { passive: true })
+    window.addEventListener("mouseover", onOver, { passive: true })
+
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseover", onOver)
+      document.getElementById("ff-cursor-none")?.remove()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFine])
+
+  if (!isFine) return null
+
+  return (
+    <>
+      {/* Trailing ring */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none fixed top-0 left-0 z-[99998] rounded-full"
+        style={{
+          x: centeredRingX,
+          y: centeredRingY,
+          width: isHovering ? 44 : 36,
+          height: isHovering ? 44 : 36,
+          border: `1.5px solid ${isHovering ? "var(--accent)" : "rgba(196,137,90,0.5)"}`,
+          background: isHovering ? "rgba(196,137,90,0.07)" : "transparent",
+          opacity: isVisible ? 1 : 0,
+          transition: "width 0.22s ease, height 0.22s ease, border-color 0.18s ease, background 0.18s ease",
+        }}
+      />
+      {/* Dot */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none fixed top-0 left-0 z-[99999] rounded-full"
+        style={{
+          x: centeredDotX,
+          y: centeredDotY,
+          width: 6,
+          height: 6,
+          backgroundColor: "var(--accent)",
+          opacity: isVisible ? 1 : 0,
+          boxShadow: isHovering
+            ? "0 0 12px 4px rgba(196,137,90,0.45)"
+            : "0 0 6px 2px rgba(196,137,90,0.2)",
+          transition: "box-shadow 0.2s ease",
+        }}
+      />
+    </>
+  )
+}
+
+// ─── Typewriter Role Rotator ──────────────────────────────────────────────────
+
+const ROLES = [
+  "Software Engineer",
+  "AI Developer",
+  "IR Systems Builder",
+  "GenAI Specialist",
+  "Full-Stack Engineer",
+]
+
+function TypewriterRole() {
+  const [roleIndex, setRoleIndex] = useState(0)
+  const [displayed, setDisplayed] = useState("")
+  const [phase, setPhase] = useState<"typing" | "pausing" | "erasing">("typing")
+
+  useEffect(() => {
+    const current = ROLES[roleIndex]
+    let timeout: ReturnType<typeof setTimeout>
+
+    if (phase === "typing") {
+      if (displayed.length < current.length) {
+        timeout = setTimeout(() => setDisplayed(current.slice(0, displayed.length + 1)), 62)
+      } else {
+        timeout = setTimeout(() => setPhase("pausing"), 1800)
+      }
+    } else if (phase === "pausing") {
+      timeout = setTimeout(() => setPhase("erasing"), 100)
+    } else {
+      if (displayed.length > 0) {
+        timeout = setTimeout(() => setDisplayed((d) => d.slice(0, -1)), 32)
+      } else {
+        setRoleIndex((i) => (i + 1) % ROLES.length)
+        setPhase("typing")
+      }
+    }
+    return () => clearTimeout(timeout)
+  }, [displayed, phase, roleIndex])
+
+  return (
+    <span className="font-body text-[11px] font-medium tracking-widest uppercase" style={{ color: "var(--accent)" }}>
+      {displayed}
+      <motion.span
+        animate={{ opacity: [1, 0, 1] }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: "steps(1)" }}
+        style={{ display: "inline-block", width: "1px", height: "0.8em", backgroundColor: "var(--accent)", marginLeft: "2px", verticalAlign: "middle" }}
+      />
+    </span>
+  )
+}
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 function Hero({
@@ -1472,9 +1636,56 @@ function Hero({
       className="relative min-h-[92vh] flex flex-col justify-between pt-14 pb-8"
       style={{ backgroundColor: "var(--background)" }}
     >
+      {/* Animated ambient gradient mesh */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      >
+        <motion.div
+          className="absolute -top-1/4 -left-1/4 w-[80%] h-[80%] rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(196,137,90,0.11) 0%, transparent 65%)",
+            filter: "blur(40px)",
+          }}
+          animate={{
+            x: ["0%", "8%", "0%", "-5%", "0%"],
+            y: ["0%", "5%", "10%", "3%", "0%"],
+            scale: [1, 1.08, 1.04, 1.1, 1],
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-0 right-0 w-[60%] h-[70%] rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(196,137,90,0.07) 0%, transparent 60%)",
+            filter: "blur(60px)",
+          }}
+          animate={{
+            x: ["0%", "-6%", "0%", "4%", "0%"],
+            y: ["0%", "-8%", "-4%", "-10%", "0%"],
+            scale: [1, 1.05, 1.1, 1.04, 1],
+          }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(196,137,90,0.05) 0%, transparent 55%)",
+            filter: "blur(30px)",
+          }}
+          animate={{
+            scale: [1, 1.15, 1, 1.08, 1],
+            opacity: [0.5, 0.9, 0.6, 1, 0.5],
+          }}
+          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 6 }}
+        />
+      </div>
       {/* Top Telemetry / Status bar */}
       <motion.div
-        className="max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 pt-5 md:pt-7 pb-3 flex flex-wrap items-center justify-between gap-y-2.5"
+        className="relative z-10 max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 pt-5 md:pt-7 pb-3 flex flex-wrap items-center justify-between gap-y-2.5"
         style={{ borderBottom: "1px solid var(--border)" }}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 6 }}
@@ -1517,27 +1728,23 @@ function Hero({
       </motion.div>
 
       {/* Hero Body — 2-Column Swiss Editorial Layout */}
-      <div className="max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 flex-1 flex flex-col justify-center py-5 md:py-7">
+      <div className="relative z-10 max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 flex-1 flex flex-col justify-center py-5 md:py-7">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           {/* Left Column: Monolithic Typography & Mission */}
           <div className="lg:col-span-7">
-            {/* Role Chip */}
+            {/* Role Chip — typewriter rotating roles */}
             <motion.div
               className="inline-flex items-center gap-2 px-3 py-1 rounded-sm border border-[var(--border)] bg-[var(--card)] mb-3"
+              style={{ minWidth: "240px" }}
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : -8 }}
               transition={{ duration: 0.45, delay: shown ? 1.05 : 0 }}
             >
               <span
-                className="w-1.5 h-1.5 rounded-full"
+                className="w-1.5 h-1.5 rounded-full shrink-0"
                 style={{ backgroundColor: "var(--accent)" }}
               />
-              <span
-                className="font-body text-[11px] font-medium tracking-widest uppercase"
-                style={{ color: "var(--accent)" }}
-              >
-                Software Engineer &amp; AI Developer
-              </span>
+              <TypewriterRole />
             </motion.div>
 
             {/* Display Name — layoutId preserves the smooth morph from the intro canvas */}
@@ -1911,7 +2118,7 @@ function Hero({
 
       {/* Bottom CTA & Action Row */}
       <motion.div
-        className="max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 pt-4 pb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+        className="relative z-10 max-w-[1440px] mx-auto w-full px-6 sm:px-8 md:px-16 pt-4 pb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
         style={{ borderTop: "1px solid var(--border)" }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 10 }}
@@ -2749,7 +2956,14 @@ function ProjectDetailModal({
       if (e.key === "Escape") onClose()
     }
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+
+    // Stop Lenis so background page doesn't scroll while modal is open
+    window.lenis?.stop()
+
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      window.lenis?.start()
+    }
   }, [onClose])
 
   return (
@@ -2767,6 +2981,7 @@ function ProjectDetailModal({
     >
       <motion.div
         className="w-full max-w-4xl max-h-[90vh] overflow-y-auto project-card p-6 sm:p-8 md:p-10 shadow-2xl relative"
+        data-lenis-prevent
         initial={{ scale: 0.96, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 20 }}
@@ -3195,11 +3410,11 @@ function CommandPalette({
     setQuery("")
     setSelectedIndex(0)
     setCopied(false)
-    document.body.style.overflow = "hidden"
+    // Do NOT set body.style.overflow here — Lenis is stopped by useLenisScroll
+    // in the App root when commandPaletteOpen becomes true.
     const timer = setTimeout(() => inputRef.current?.focus(), 50)
     return () => {
       clearTimeout(timer)
-      document.body.style.overflow = ""
     }
   }, [])
 
@@ -3714,7 +3929,7 @@ function CommandPalette({
         </div>
 
         {/* Results List */}
-        <div className="overflow-y-auto p-2 divide-y divide-transparent">
+        <div className="overflow-y-auto p-2 divide-y divide-transparent" data-lenis-prevent>
           {filteredCommands.length === 0 ? (
             <div className="py-12 text-center text-xs font-body text-[var(--muted-foreground)]">
               <span className="font-mono text-base block mb-1 text-[var(--accent)]">
@@ -5991,110 +6206,7 @@ function Footer() {
   )
 }
 
-// ─── Custom Cursor ────────────────────────────────────────────────────────────
 
-function CustomCursor() {
-  const cursorDot = useRef<HTMLDivElement>(null)
-  const cursorRing = useRef<HTMLDivElement>(null)
-  const [hovered, setHovered] = useState(false)
-  const [clicking, setClicking] = useState(false)
-  // Only enable the custom cursor on precise-pointer devices. Touch / coarse
-  // devices fall back to the native pointer (see the matching CSS media query).
-  const [enabled] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(hover: hover) and (pointer: fine)").matches,
-  )
-  const pos = useRef({ x: -100, y: -100 })
-  const ringPos = useRef({ x: -100, y: -100 })
-  const rafId = useRef<number>(0)
-
-  useEffect(() => {
-    if (!enabled) return
-    const onMove = (e: MouseEvent) => {
-      pos.current = { x: e.clientX, y: e.clientY }
-    }
-
-    const onEnter = (e: MouseEvent) => {
-      const t = e.target as HTMLElement
-      const isInteractive =
-        t.closest("a, button, input") !== null ||
-        t.tagName === "A" ||
-        t.tagName === "BUTTON" ||
-        t.tagName === "INPUT"
-      setHovered(isInteractive)
-    }
-
-    const onDown = () => setClicking(true)
-    const onUp = () => setClicking(false)
-
-    window.addEventListener("mousemove", onMove)
-    window.addEventListener("mouseover", onEnter)
-    window.addEventListener("mousedown", onDown)
-    window.addEventListener("mouseup", onUp)
-
-    // Lerp ring toward dot each frame
-    const animate = () => {
-      const speed = 0.12
-      ringPos.current.x += (pos.current.x - ringPos.current.x) * speed
-      ringPos.current.y += (pos.current.y - ringPos.current.y) * speed
-
-      if (cursorDot.current) {
-        cursorDot.current.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) translate(-50%, -50%)`
-      }
-      if (cursorRing.current) {
-        cursorRing.current.style.transform = `translate(${ringPos.current.x}px, ${ringPos.current.y}px) translate(-50%, -50%)`
-      }
-      rafId.current = requestAnimationFrame(animate)
-    }
-    rafId.current = requestAnimationFrame(animate)
-
-    return () => {
-      window.removeEventListener("mousemove", onMove)
-      window.removeEventListener("mouseover", onEnter)
-      window.removeEventListener("mousedown", onDown)
-      window.removeEventListener("mouseup", onUp)
-      cancelAnimationFrame(rafId.current)
-    }
-  }, [enabled])
-
-  if (!enabled) return null
-
-  return (
-    <>
-      {/* Dot — snaps directly to cursor */}
-      <div
-        ref={cursorDot}
-        className="fixed top-0 left-0 z-[100000] pointer-events-none will-change-transform"
-        style={{
-          width: clicking ? 6 : hovered ? 8 : 5,
-          height: clicking ? 6 : hovered ? 8 : 5,
-          borderRadius: "50%",
-          backgroundColor: hovered ? "var(--accent)" : "var(--foreground)",
-          transition:
-            "width 0.15s ease, height 0.15s ease, background-color 0.2s ease",
-        }}
-      />
-      {/* Ring — lags behind for fluidity */}
-      <div
-        ref={cursorRing}
-        className="fixed top-0 left-0 z-[99999] pointer-events-none will-change-transform flex items-center justify-center"
-        style={{
-          width: hovered ? 48 : clicking ? 24 : 32,
-          height: hovered ? 48 : clicking ? 24 : 32,
-          borderRadius: "50%",
-          border: `1.5px solid ${
-            hovered ? "var(--accent)" : "var(--foreground)"
-          }`,
-          opacity: hovered ? 0.5 : 0.2,
-          backdropFilter: "none",
-          transition:
-            "width 0.35s cubic-bezier(0.22,1,0.36,1), height 0.35s cubic-bezier(0.22,1,0.36,1), opacity 0.2s ease, border-color 0.2s ease",
-        }}
-      ></div>
-    </>
-  )
-}
 
 // ─── Scroll Progress Bar ──────────────────────────────────────────────────────
 
@@ -6638,7 +6750,6 @@ export default function App() {
               isOpen={commandPaletteOpen}
               onClose={() => {
                 setCommandPaletteOpen(false)
-                document.body.style.overflow = ""
               }}
               theme={theme}
               toggleTheme={toggleTheme}
