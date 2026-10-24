@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import Lenis from "lenis"
 import {
   motion,
   useInView,
@@ -11,13 +12,75 @@ import {
   AnimatePresence,
 } from "motion/react"
 
+declare global {
+  interface Window {
+    lenis?: Lenis
+  }
+}
+
+// ─── Lenis Smooth Scroll Helper ──────────────────────────────────────────────
+
+export function smoothScrollTo(target: string | HTMLElement, offset = -60) {
+  if (typeof window === "undefined") return
+  if (window.lenis) {
+    window.lenis.scrollTo(target, { offset, duration: 1.15 })
+  } else {
+    const el =
+      typeof target === "string" ? document.querySelector(target) : target
+    el?.scrollIntoView({ behavior: "smooth" })
+  }
+}
+
+function useLenisScroll(introActive: boolean, modalOpen: boolean) {
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    const lenis = new Lenis({
+      duration: 1.15,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: "vertical",
+      gestureOrientation: "vertical",
+      smoothWheel: true,
+      wheelMultiplier: 1.0,
+      touchMultiplier: 1.4,
+    })
+
+    window.lenis = lenis
+
+    let rafId: number
+    function raf(time: number) {
+      lenis.raf(time)
+      rafId = requestAnimationFrame(raf)
+    }
+    rafId = requestAnimationFrame(raf)
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      lenis.destroy()
+      delete window.lenis
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!window.lenis) return
+    if (introActive || modalOpen) {
+      window.lenis.stop()
+    } else {
+      window.lenis.start()
+    }
+  }, [introActive, modalOpen])
+}
+
 // ─── Animation helpers ────────────────────────────────────────────────────────
 
+// Blur-Fade: cinematic entrance with subtle Gaussian blur dissipation
 const fadeUp = {
-  hidden: { opacity: 0, y: 32 },
+  hidden: { opacity: 0, y: 28, filter: "blur(8px)" },
   visible: (delay = 0) => ({
     opacity: 1,
     y: 0,
+    filter: "blur(0px)",
     transition: { duration: 0.72, ease: [0.22, 1, 0.36, 1] as const, delay },
   }),
 }
@@ -47,6 +110,200 @@ function FadeUp({
     >
       {children}
     </motion.div>
+  )
+}
+
+function BlurFade({
+  children,
+  delay = 0,
+  className,
+  style,
+  direction = "up",
+  blur = 8,
+  duration = 0.75,
+}: {
+  children: React.ReactNode
+  delay?: number
+  className?: string
+  style?: React.CSSProperties
+  direction?: "up" | "down" | "none"
+  blur?: number
+  duration?: number
+}) {
+  const ref = useRef(null)
+  const inView = useInView(ref, { once: true, margin: "-60px" })
+  const yOffset = direction === "up" ? 28 : direction === "down" ? -28 : 0
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      style={style}
+      initial={{ opacity: 0, y: yOffset, filter: `blur(${blur}px)` }}
+      animate={
+        inView
+          ? { opacity: 1, y: 0, filter: "blur(0px)" }
+          : { opacity: 0, y: yOffset, filter: `blur(${blur}px)` }
+      }
+      transition={{ duration, ease: [0.22, 1, 0.36, 1], delay }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+// ─── Magnetic Hover Element ──────────────────────────────────────────────────
+
+function Magnetic({
+  children,
+  className,
+  style,
+  strength = 0.22,
+}: {
+  children: React.ReactNode
+  className?: string
+  style?: React.CSSProperties
+  strength?: number
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const x = useMotionValue(0)
+  const y = useMotionValue(0)
+  const springX = useSpring(x, { stiffness: 180, damping: 16, mass: 0.1 })
+  const springY = useSpring(y, { stiffness: 180, damping: 16, mass: 0.1 })
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return
+    const rect = ref.current.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    x.set((e.clientX - centerX) * strength)
+    y.set((e.clientY - centerY) * strength)
+  }
+
+  const handleMouseLeave = () => {
+    x.set(0)
+    y.set(0)
+  }
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      style={{ ...style, x: springX, y: springY, display: "inline-block" }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+// ─── Scroll-Driven Parallax Image Frame ──────────────────────────────────────
+
+function ParallaxImage({
+  src,
+  alt,
+  className = "",
+  containerClassName = "",
+  aspectRatio = "aspect-[16/10]",
+  range = 24,
+  onClick,
+}: {
+  src: string
+  alt: string
+  className?: string
+  containerClassName?: string
+  aspectRatio?: string
+  range?: number
+  onClick?: () => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"],
+  })
+  const rawY = useTransform(scrollYProgress, [0, 1], [-range, range])
+  const smoothY = useSpring(rawY, { stiffness: 90, damping: 22, mass: 0.15 })
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden ${aspectRatio} ${containerClassName}`}
+      onClick={onClick}
+    >
+      <motion.div
+        style={{ y: smoothY }}
+        className="w-full h-full will-change-transform"
+      >
+        <img
+          src={src}
+          alt={alt}
+          className={`w-full h-[120%] -top-[10%] relative object-cover object-top scale-105 transition-transform duration-700 ease-out group-hover:scale-110 ${className}`}
+          loading="lazy"
+          decoding="async"
+        />
+      </motion.div>
+    </div>
+  )
+}
+
+// ─── Animated Stat Counter ───────────────────────────────────────────────────
+
+function parseStatValue(raw: string) {
+  const match = raw.match(/^([^0-9.]*)(\d+(?:\.\d+)?)(.*)$/)
+  if (!match) return null
+  const [, prefix, numStr, suffix] = match
+  const val = parseFloat(numStr)
+  if (isNaN(val)) return null
+  const decimals = numStr.includes(".") ? numStr.split(".")[1].length : 0
+  return { prefix, val, decimals, suffix }
+}
+
+function AnimatedStatNumber({
+  value,
+  className,
+}: {
+  value: string
+  className?: string
+}) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true, margin: "-40px" })
+  const parsed = parseStatValue(value)
+
+  const motionVal = useMotionValue(0)
+  const spring = useSpring(motionVal, {
+    stiffness: 75,
+    damping: 24,
+    restDelta: 0.001,
+  })
+  const [display, setDisplay] = useState(parsed ? "0" : value)
+
+  useEffect(() => {
+    if (!parsed) return
+    if (inView) {
+      motionVal.set(parsed.val)
+    }
+  }, [inView, parsed, motionVal])
+
+  useEffect(() => {
+    if (!parsed) return
+    return spring.on("change", (latest) => {
+      const formattedNum =
+        parsed.decimals > 0
+          ? latest.toFixed(parsed.decimals)
+          : Math.round(latest).toString()
+      setDisplay(`${parsed.prefix}${formattedNum}${parsed.suffix}`)
+    })
+  }, [spring, parsed])
+
+  if (!parsed) {
+    return <span className={className}>{value}</span>
+  }
+
+  return (
+    <span ref={ref} className={className}>
+      {display}
+    </span>
   )
 }
 
@@ -760,7 +1017,11 @@ function Nav({
       <div className="max-w-[1440px] mx-auto px-6 sm:px-8 md:px-16 flex items-center justify-between h-14">
         <a
           href="#hero"
-          className="font-display text-sm font-medium tracking-tight flex items-center gap-2"
+          onClick={(e) => {
+            e.preventDefault()
+            smoothScrollTo("#hero")
+          }}
+          className="font-display text-sm font-medium tracking-tight flex items-center gap-2 cursor-pointer"
           style={{ color: "var(--foreground)" }}
         >
           <span>Furkan Farooqui</span>
@@ -777,11 +1038,9 @@ function Nav({
                 href={`#${id}`}
                 onClick={(e) => {
                   e.preventDefault()
-                  document
-                    .getElementById(id)
-                    ?.scrollIntoView({ behavior: "smooth" })
+                  smoothScrollTo(`#${id}`)
                 }}
-                className="nav-link font-body text-xs font-medium tracking-widest uppercase relative py-1"
+                className="nav-link font-body text-xs font-medium tracking-widest uppercase relative py-1 cursor-pointer"
                 style={{
                   color:
                     active === id
@@ -1043,11 +1302,8 @@ function Nav({
                         e.preventDefault()
                         setMobileMenuOpen(false)
                         setTimeout(() => {
-                          const target = document.getElementById(id)
-                          if (target) {
-                            target.scrollIntoView({ behavior: "smooth" })
-                          }
-                        }, 60)
+                          smoothScrollTo(`#${id}`)
+                        }, 100)
                       }}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-[var(--radius)] font-body text-xs tracking-wider uppercase transition-all ${
                         isActive
@@ -1338,9 +1594,7 @@ function Hero({
                 href="#work"
                 onClick={(e) => {
                   e.preventDefault()
-                  document
-                    .getElementById("work")
-                    ?.scrollIntoView({ behavior: "smooth" })
+                  smoothScrollTo("#work")
                 }}
                 className="group inline-flex items-center gap-1.5 text-xs font-body px-2.5 py-1 rounded-sm border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all cursor-pointer"
                 style={{ color: "var(--foreground)" }}
@@ -1357,9 +1611,7 @@ function Hero({
                 href="#work"
                 onClick={(e) => {
                   e.preventDefault()
-                  document
-                    .getElementById("work")
-                    ?.scrollIntoView({ behavior: "smooth" })
+                  smoothScrollTo("#work")
                 }}
                 className="group inline-flex items-center gap-1.5 text-xs font-body px-2.5 py-1 rounded-sm border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all cursor-pointer"
                 style={{ color: "var(--foreground)" }}
@@ -1583,7 +1835,7 @@ function Hero({
                           Cranfield IR Eval
                         </span>
                         <span className="font-display font-medium text-lg sm:text-xl block text-[var(--accent)]">
-                          0.74 NDCG
+                          <AnimatedStatNumber value="0.74 NDCG" />
                         </span>
                         <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
                           0.90 MRR · 336 Judgements
@@ -1595,7 +1847,7 @@ function Hero({
                           Ranking Latency
                         </span>
                         <span className="font-display font-medium text-lg sm:text-xl block text-[var(--foreground)]">
-                          3.3ms p50
+                          <AnimatedStatNumber value="3.3ms p50" />
                         </span>
                         <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
                           BM25 Engine (Excl. RTT)
@@ -1607,7 +1859,7 @@ function Hero({
                           Vision Accuracy
                         </span>
                         <span className="font-display font-medium text-lg sm:text-xl block text-[var(--foreground)]">
-                          94.8% Val
+                          <AnimatedStatNumber value="94.8% Val" />
                         </span>
                         <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
                           PyTorch Clinical CNN
@@ -1619,7 +1871,7 @@ function Hero({
                           Production Systems
                         </span>
                         <span className="font-display font-medium text-lg sm:text-xl block text-[var(--accent)]">
-                          06 Live
+                          <AnimatedStatNumber value="06 Live" />
                         </span>
                         <span className="font-body text-[10px] block text-[var(--muted-foreground)]">
                           Vercel Edge &amp; AWS Cloud
@@ -1672,134 +1924,140 @@ function Hero({
         {/* Left Action Buttons */}
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
           {/* Primary CTA: Explore Work */}
-          <a
-            href="#work"
-            onClick={(e) => {
-              e.preventDefault()
-              document
-                .getElementById("work")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200"
-            style={{
-              backgroundColor: "var(--foreground)",
-              color: "var(--background)",
-            }}
-          >
-            <span>Explore Work (06)</span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <Magnetic strength={0.28}>
+            <a
+              href="#work"
+              onClick={(e) => {
+                e.preventDefault()
+                smoothScrollTo("#work")
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200 cursor-pointer"
+              style={{
+                backgroundColor: "var(--foreground)",
+                color: "var(--background)",
+              }}
             >
-              <path d="M8 3v10M8 13l4-4M8 13L4 9" />
-            </svg>
-          </a>
-
-          {/* Secondary CTA: Resume PDF */}
-          <a
-            href="https://drive.google.com/uc?export=download&id=1GFm2sa7MQjxvG_6LFVIOzrOZxZiffKu4"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200 border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            >
-              <path
-                d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"
+              <span>Explore Work (06)</span>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-              />
-            </svg>
-            <span>Download Résumé</span>
-          </a>
+              >
+                <path d="M8 3v10M8 13l4-4M8 13L4 9" />
+              </svg>
+            </a>
+          </Magnetic>
+
+          {/* Secondary CTA: Resume PDF */}
+          <Magnetic strength={0.25}>
+            <a
+              href="https://drive.google.com/uc?export=download&id=1GFm2sa7MQjxvG_6LFVIOzrOZxZiffKu4"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200 border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <path
+                  d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>Download Résumé</span>
+            </a>
+          </Magnetic>
 
           {/* Tertiary CTA: Book Call */}
-          <a
-            href="https://cal.com/furkan-farooqui/lets-talk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200 border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <Magnetic strength={0.25}>
+            <a
+              href="https://cal.com/furkan-farooqui/lets-talk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius)] text-xs font-body font-medium tracking-wider uppercase transition-all duration-200 border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] cursor-pointer"
             >
-              <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-              <line x1="16" x2="16" y1="2" y2="6" />
-              <line x1="8" x2="8" y1="2" y2="6" />
-              <line x1="3" x2="18" y1="10" y2="10" />
-            </svg>
-            <span>Let&apos;s Talk</span>
-          </a>
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                <line x1="16" x2="16" y1="2" y2="6" />
+                <line x1="8" x2="8" y1="2" y2="6" />
+                <line x1="3" x2="18" y1="10" y2="10" />
+              </svg>
+              <span>Let&apos;s Talk</span>
+            </a>
+          </Magnetic>
 
           {/* 1-Click Copy Email Button */}
-          <button
-            type="button"
-            onClick={handleCopyEmail}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[var(--radius)] text-xs font-body tracking-wider transition-all duration-200 border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)]"
-            style={{
-              color: copied ? "var(--accent)" : "var(--muted-foreground)",
-            }}
-            title="Click to copy email address"
-          >
-            {copied ? (
-              <>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span className="font-medium text-[var(--accent)]">
-                  Copied to Clipboard!
-                </span>
-              </>
-            ) : (
-              <>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                </svg>
-                <span className="hidden xl:inline">
-                  furkanahmedfarooqui19@gmail.com
-                </span>
-                <span className="xl:hidden">Copy Email</span>
-              </>
-            )}
-          </button>
+          <Magnetic strength={0.22}>
+            <button
+              type="button"
+              onClick={handleCopyEmail}
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[var(--radius)] text-xs font-body tracking-wider transition-all duration-200 border border-[var(--border)] bg-[var(--card)] hover:border-[var(--accent)] cursor-pointer"
+              style={{
+                color: copied ? "var(--accent)" : "var(--muted-foreground)",
+              }}
+              title="Click to copy email address"
+            >
+              {copied ? (
+                <>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span className="font-medium text-[var(--accent)]">
+                    Copied to Clipboard!
+                  </span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                  </svg>
+                  <span className="hidden xl:inline">
+                    furkanahmedfarooqui19@gmail.com
+                  </span>
+                  <span className="xl:hidden">Copy Email</span>
+                </>
+              )}
+            </button>
+          </Magnetic>
         </div>
 
         {/* Right Scroll Indicator */}
@@ -1809,12 +2067,8 @@ function Hero({
         >
           <button
             type="button"
-            onClick={() =>
-              document
-                .getElementById("work")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="flex items-center gap-2 tracking-widest uppercase transition-colors hover:text-[var(--accent)] group"
+            onClick={() => smoothScrollTo("#work")}
+            className="flex items-center gap-2 tracking-widest uppercase transition-colors hover:text-[var(--accent)] group cursor-pointer"
           >
             <span>Scroll to explore</span>
             <motion.span
@@ -1983,7 +2237,7 @@ function FeaturedProjectCard({
                     className="font-display font-medium block text-xs"
                     style={{ color: "var(--foreground)" }}
                   >
-                    {st.value}
+                    <AnimatedStatNumber value={st.value} />
                   </span>
                 </div>
               ))}
@@ -2027,59 +2281,63 @@ function FeaturedProjectCard({
 
           {/* Action CTAs */}
           <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[var(--border)]">
-            <a
-              href={project.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cta-arrow font-body text-xs font-medium px-5 py-2.5 transition-colors duration-200 flex items-center gap-2"
-              style={{
-                backgroundColor: "var(--accent)",
-                color: "var(--accent-foreground)",
-                borderRadius: "var(--radius)",
-              }}
-            >
-              <span>Launch Live App</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
+            <Magnetic strength={0.25}>
+              <a
+                href={project.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cta-arrow font-body text-xs font-medium px-5 py-2.5 transition-colors duration-200 flex items-center gap-2 cursor-pointer"
+                style={{
+                  backgroundColor: "var(--accent)",
+                  color: "var(--accent-foreground)",
+                  borderRadius: "var(--radius)",
+                }}
               >
-                <path
-                  d="M3 8H13M13 8L9 4M13 8L9 12"
-                  stroke="currentColor"
-                  strokeWidth="1.3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </a>
+                <span>Launch Live App</span>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3 8H13M13 8L9 4M13 8L9 12"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            </Magnetic>
 
-            <button
-              type="button"
-              onClick={() => onOpenDetails(project)}
-              className="font-body text-xs font-medium px-4 py-2.5 transition-colors duration-200 flex items-center gap-2"
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                color: "var(--foreground)",
-                backgroundColor: "var(--background)",
-              }}
-            >
-              <span>Architecture Deep-Dive</span>
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
+            <Magnetic strength={0.22}>
+              <button
+                type="button"
+                onClick={() => onOpenDetails(project)}
+                className="font-body text-xs font-medium px-4 py-2.5 transition-colors duration-200 flex items-center gap-2 cursor-pointer"
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  color: "var(--foreground)",
+                  backgroundColor: "var(--background)",
+                }}
               >
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            </button>
+                <span>Architecture Deep-Dive</span>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                >
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </Magnetic>
           </div>
         </div>
 
@@ -2141,28 +2399,16 @@ function FeaturedProjectCard({
             </div>
 
             {/* Screenshot Frame with Interactive Hover Zoom & Parallax */}
-            <div
-              ref={imageFrameRef}
-              className="relative aspect-[16/10] overflow-hidden bg-[var(--card)] cursor-pointer"
-              onClick={() => onOpenDetails(project)}
-            >
-              <motion.div
-                style={{ y: imageY }}
-                className="w-full h-full will-change-transform"
-              >
-                <img
-                  src={project.image}
-                  alt={`${project.title} live interface preview`}
-                  className="w-full h-full object-cover object-top scale-105 transition-transform duration-700 ease-out group-hover:scale-110"
-                  loading="lazy"
-                  decoding="async"
-                  width={800}
-                  height={500}
-                />
-              </motion.div>
+            <div className="relative cursor-pointer" onClick={() => onOpenDetails(project)}>
+              <ParallaxImage
+                src={project.image}
+                alt={`${project.title} live interface preview`}
+                aspectRatio="aspect-[16/10]"
+                range={28}
+              />
 
               {/* HUD Telemetry Overlay on Hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 pointer-events-none z-10">
                 <div className="flex items-center justify-between w-full text-white text-[11px] font-body">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -2237,7 +2483,6 @@ function ProjectGridCard({
 
         {/* Preview Screenshot Frame with Parallax */}
         <div
-          ref={imageFrameRef}
           className="relative aspect-[16/10] overflow-hidden bg-[var(--background)] cursor-pointer"
           onClick={() => onOpenDetails(project)}
           role="button"
@@ -2250,21 +2495,13 @@ function ProjectGridCard({
           }}
           aria-label={`View ${project.title} details`}
         >
-          <motion.div
-            style={{ y: imageY }}
-            className="w-full h-full will-change-transform"
-          >
-            <img
-              src={project.image}
-              alt={`${project.title} preview`}
-              className="w-full h-full object-cover object-top scale-105 transition-transform duration-600 ease-out group-hover:scale-110"
-              loading="lazy"
-              decoding="async"
-              width={640}
-              height={400}
-            />
-          </motion.div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-3 text-white text-[10px] font-body pointer-events-none">
+          <ParallaxImage
+            src={project.image}
+            alt={`${project.title} preview`}
+            aspectRatio="aspect-[16/10]"
+            range={22}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-3 text-white text-[10px] font-body pointer-events-none z-10">
             <span>View Architecture</span>
             <span>↗</span>
           </div>
@@ -2314,7 +2551,7 @@ function ProjectGridCard({
                   className="font-display font-medium block text-[11px]"
                   style={{ color: "var(--foreground)" }}
                 >
-                  {st.value}
+                  <AnimatedStatNumber value={st.value} />
                 </span>
               </div>
             ))}
@@ -2978,14 +3215,14 @@ function CommandPalette({
   const navigateTo = (id: string) => {
     onClose()
     setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" })
+      smoothScrollTo(`#${id}`)
     }, 120)
   }
 
   const scrollToTop = () => {
     onClose()
     setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      smoothScrollTo("#hero")
     }, 120)
   }
 
@@ -4080,7 +4317,7 @@ function AboutNarrative({
               className="p-3.5 rounded-sm border border-[var(--border)] bg-[var(--card)] transition-colors hover:border-[var(--accent)]"
             >
               <span className="font-display font-medium text-xl sm:text-2xl block text-[var(--accent)]">
-                {m.value}
+                <AnimatedStatNumber value={m.value} />
               </span>
               <span className="font-body text-xs font-medium block text-[var(--foreground)] mt-0.5">
                 {m.label}
@@ -5028,7 +5265,7 @@ function ExperienceTimelineItem({
               className="p-3 sm:p-3.5 rounded-sm border border-[var(--border)] bg-[var(--background)] transition-colors group-hover:border-[var(--accent)]"
             >
               <span className="font-display font-medium text-lg sm:text-xl block text-[var(--accent)]">
-                {m.value}
+                <AnimatedStatNumber value={m.value} />
               </span>
               <span className="font-body text-[11px] font-medium block text-[var(--muted-foreground)] mt-0.5">
                 {m.label}
@@ -6320,12 +6557,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
-  // Guarantee scroll restoration whenever Command Palette is closed
-  useEffect(() => {
-    if (!commandPaletteOpen && !introActive) {
-      document.body.style.overflow = ""
-    }
-  }, [commandPaletteOpen, introActive])
+  // Initialize and sync Lenis smooth scroll
+  useLenisScroll(introActive, commandPaletteOpen)
 
   return (
     <LayoutGroup>
