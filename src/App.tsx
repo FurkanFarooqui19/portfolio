@@ -276,7 +276,6 @@ function AnimatedStatNumber({
     damping: 24,
     restDelta: 0.001,
   })
-  const [display, setDisplay] = useState(parsed ? "0" : value)
 
   useEffect(() => {
     if (!parsed) return
@@ -288,11 +287,13 @@ function AnimatedStatNumber({
   useEffect(() => {
     if (!parsed) return
     return spring.on("change", (latest) => {
-      const formattedNum =
-        parsed.decimals > 0
-          ? latest.toFixed(parsed.decimals)
-          : Math.round(latest).toString()
-      setDisplay(`${parsed.prefix}${formattedNum}${parsed.suffix}`)
+      if (ref.current) {
+        const formattedNum =
+          parsed.decimals > 0
+            ? latest.toFixed(parsed.decimals)
+            : Math.round(latest).toString()
+        ref.current.textContent = `${parsed.prefix}${formattedNum}${parsed.suffix}`
+      }
     })
   }, [spring, parsed])
 
@@ -300,9 +301,11 @@ function AnimatedStatNumber({
     return <span className={className}>{value}</span>
   }
 
+  const initialDisplay = `${parsed.prefix}0${parsed.suffix}`
+
   return (
     <span ref={ref} className={className}>
-      {display}
+      {initialDisplay}
     </span>
   )
 }
@@ -1185,9 +1188,8 @@ function Nav({
               backgroundColor: "var(--card)",
             }}
             title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            aria-label={`Switch to ${
-              theme === "light" ? "dark" : "light"
-            } theme`}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"
+              } theme`}
           >
             {theme === "light" ? (
               <>
@@ -1241,19 +1243,16 @@ function Nav({
           >
             <div className="w-3.5 h-2.5 relative flex flex-col justify-between">
               <span
-                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${
-                  mobileMenuOpen ? "rotate-45 translate-y-[4.5px]" : ""
-                }`}
+                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${mobileMenuOpen ? "rotate-45 translate-y-[4.5px]" : ""
+                  }`}
               />
               <span
-                className={`w-full h-[1.5px] bg-current rounded-full transition-opacity duration-150 ${
-                  mobileMenuOpen ? "opacity-0" : "opacity-100"
-                }`}
+                className={`w-full h-[1.5px] bg-current rounded-full transition-opacity duration-150 ${mobileMenuOpen ? "opacity-0" : "opacity-100"
+                  }`}
               />
               <span
-                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${
-                  mobileMenuOpen ? "-rotate-45 -translate-y-[4.5px]" : ""
-                }`}
+                className={`w-full h-[1.5px] bg-current rounded-full transition-all duration-200 origin-center ${mobileMenuOpen ? "-rotate-45 -translate-y-[4.5px]" : ""
+                  }`}
               />
             </div>
           </button>
@@ -1286,122 +1285,121 @@ function Nav({
                 backdropFilter: "blur(24px)",
               }}
             >
-            <div className="px-6 py-6 space-y-5 max-w-lg mx-auto">
-              {/* Section Links */}
-              <div className="space-y-1">
-                <p className="text-[10px] font-mono tracking-widest uppercase text-[var(--muted-foreground)] mb-2 px-3">
-                  00 // Section Navigation
-                </p>
-                {NAV_ITEMS.map(({ label, id }, idx) => {
-                  const isActive = active === id
-                  return (
-                    <a
-                      key={id}
-                      href={`#${id}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setMobileMenuOpen(false)
-                        setTimeout(() => {
-                          smoothScrollTo(`#${id}`)
-                        }, 100)
-                      }}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-[var(--radius)] font-body text-xs tracking-wider uppercase transition-all ${
-                        isActive
+              <div className="px-6 py-6 space-y-5 max-w-lg mx-auto">
+                {/* Section Links */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-mono tracking-widest uppercase text-[var(--muted-foreground)] mb-2 px-3">
+                    00 // Section Navigation
+                  </p>
+                  {NAV_ITEMS.map(({ label, id }, idx) => {
+                    const isActive = active === id
+                    return (
+                      <a
+                        key={id}
+                        href={`#${id}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setMobileMenuOpen(false)
+                          setTimeout(() => {
+                            smoothScrollTo(`#${id}`)
+                          }, 100)
+                        }}
+                        className={`flex items-center justify-between px-3 py-2.5 rounded-[var(--radius)] font-body text-xs tracking-wider uppercase transition-all ${isActive
                           ? "bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 font-medium"
                           : "text-[var(--foreground)] hover:bg-[var(--card)] hover:text-[var(--accent)]"
-                      }`}
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
+                            0{idx + 1}
+                          </span>
+                          <span className="font-medium">{label}</span>
+                        </div>
+                        {isActive && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
+                        )}
+                      </a>
+                    )
+                  })}
+                </div>
+
+                {/* Mobile Quick Action Strip */}
+                <div className="pt-4 border-t border-[var(--border)] space-y-2.5">
+                  <a
+                    href="https://drive.google.com/uc?export=download&id=1GFm2sa7MQjxvG_6LFVIOzrOZxZiffKu4"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-body tracking-wider uppercase text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                  >
+                    <span>Download CV</span>
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[10px] text-[var(--muted-foreground)]">
-                          0{idx + 1}
-                        </span>
-                        <span className="font-medium">{label}</span>
-                      </div>
-                      {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
-                      )}
+                      <path
+                        d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </a>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://github.com/FurkanFarooqui19"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+                        <path d="M9 18c-4.51 2-5-2-7-2" />
+                      </svg>
+                      <span>GitHub</span>
                     </a>
-                  )
-                })}
-              </div>
 
-              {/* Mobile Quick Action Strip */}
-              <div className="pt-4 border-t border-[var(--border)] space-y-2.5">
-                <a
-                  href="https://drive.google.com/uc?export=download&id=1GFm2sa7MQjxvG_6LFVIOzrOZxZiffKu4"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-body tracking-wider uppercase text-[var(--foreground)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
-                >
-                  <span>Download CV</span>
-                  <svg
-                    width="11"
-                    height="11"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <path
-                      d="M8 2v8M8 10l-3-3M8 10l3-3M3 13h10"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </a>
-
-                <div className="flex items-center gap-2">
-                  <a
-                    href="https://github.com/FurkanFarooqui19"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    <a
+                      href="https://linkedin.com/in/furkan-farooqui"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
                     >
-                      <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-                      <path d="M9 18c-4.51 2-5-2-7-2" />
-                    </svg>
-                    <span>GitHub</span>
-                  </a>
-
-                  <a
-                    href="https://linkedin.com/in/furkan-farooqui"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)] transition-colors"
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-                      <rect width="4" height="12" x="2" y="9" />
-                      <circle cx="4" cy="4" r="2" />
-                    </svg>
-                    <span>LinkedIn</span>
-                  </a>
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                        <rect width="4" height="12" x="2" y="9" />
+                        <circle cx="4" cy="4" r="2" />
+                      </svg>
+                      <span>LinkedIn</span>
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.nav>
   )
 }
@@ -1424,10 +1422,10 @@ function CustomCursor() {
   const ringY = useSpring(ringRawY, { stiffness: 110, damping: 22, mass: 0.35 })
 
   // Bake -50% centering into the motion value (avoids transform conflict with x/y)
-  const DOT_HALF  = 3   // 6px dot / 2
+  const DOT_HALF = 3   // 6px dot / 2
   const RING_HALF = 18  // 36px ring / 2
-  const centeredDotX  = useTransform(dotX,  (v) => v - DOT_HALF)
-  const centeredDotY  = useTransform(dotY,  (v) => v - DOT_HALF)
+  const centeredDotX = useTransform(dotX, (v) => v - DOT_HALF)
+  const centeredDotY = useTransform(dotY, (v) => v - DOT_HALF)
   const centeredRingX = useTransform(ringX, (v) => v - RING_HALF)
   const centeredRingY = useTransform(ringY, (v) => v - RING_HALF)
 
@@ -1477,7 +1475,7 @@ function CustomCursor() {
       window.removeEventListener("mouseover", onOver)
       document.getElementById("ff-cursor-none")?.remove()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFine])
 
   if (!isFine) return null
@@ -1580,6 +1578,8 @@ function Hero({
   nameSettling: boolean
 }) {
   const shown = !introActive
+  const hadIntroOnMount = useRef(introActive)
+  const isPostIntro = hadIntroOnMount.current
   const [copied, setCopied] = useState(false)
   const [istTime, setIstTime] = useState("")
   const [dossierTab, setDossierTab] = useState<"fleet" | "benchmarks">("fleet")
@@ -1692,7 +1692,7 @@ function Hero({
         transition={{
           duration: 0.5,
           ease: [0.22, 1, 0.36, 1],
-          delay: shown ? 1.0 : 0,
+          delay: shown ? (isPostIntro ? 1.0 : 0) : 0,
         }}
       >
         <div className="flex items-center gap-3">
@@ -1738,7 +1738,7 @@ function Hero({
               style={{ minWidth: "240px" }}
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : -8 }}
-              transition={{ duration: 0.45, delay: shown ? 1.05 : 0 }}
+              transition={{ duration: 0.45, delay: shown ? (isPostIntro ? 1.05 : 0) : 0 }}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -1782,7 +1782,7 @@ function Hero({
               transition={{
                 duration: 0.55,
                 ease: [0.22, 1, 0.36, 1],
-                delay: shown ? 1.15 : 0,
+                delay: shown ? (isPostIntro ? 1.15 : 0.04) : 0,
               }}
             >
               Engineering sub-millisecond information retrieval engines,
@@ -1795,7 +1795,7 @@ function Hero({
               className="flex flex-wrap items-center gap-2.5 pt-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: shown ? 1 : 0 }}
-              transition={{ duration: 0.5, delay: shown ? 1.25 : 0 }}
+              transition={{ duration: 0.5, delay: shown ? (isPostIntro ? 1.25 : 0.08) : 0 }}
             >
               <a
                 href="#work"
@@ -1842,7 +1842,7 @@ function Hero({
             transition={{
               duration: 0.6,
               ease: [0.22, 1, 0.36, 1],
-              delay: shown ? 1.2 : 0,
+              delay: shown ? (isPostIntro ? 1.2 : 0.06) : 0,
             }}
           >
             <div
@@ -2125,7 +2125,7 @@ function Hero({
         transition={{
           duration: 0.5,
           ease: [0.22, 1, 0.36, 1],
-          delay: shown ? 1.3 : 0,
+          delay: shown ? (isPostIntro ? 1.3 : 0.1) : 0,
         }}
       >
         {/* Left Action Buttons */}
@@ -2302,7 +2302,7 @@ function Hero({
         transition={{
           duration: 0.9,
           ease: [0.22, 1, 0.36, 1],
-          delay: shown ? 1.4 : 0,
+          delay: shown ? (isPostIntro ? 1.4 : 0.15) : 0,
         }}
       />
     </section>
@@ -2642,13 +2642,6 @@ function ProjectGridCard({
   index: number
   onOpenDetails: (p: ProjectItem) => void
 }) {
-  const imageFrameRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: imageFrameRef,
-    offset: ["start end", "end start"],
-  })
-  const imageY = useTransform(scrollYProgress, [0, 1], [-16, 16])
-
   return (
     <motion.article
       className="project-card flex flex-col justify-between overflow-hidden group"
@@ -3648,9 +3641,8 @@ function CommandPalette({
     {
       id: "act-theme",
       category: "Actions",
-      title: `Toggle Theme (${
-        theme === "light" ? "Switch to Dark" : "Switch to Light"
-      })`,
+      title: `Toggle Theme (${theme === "light" ? "Switch to Dark" : "Switch to Light"
+        })`,
       subtitle: `Currently active: ${theme.toUpperCase()} MODE`,
       shortcut: "Theme",
       icon:
@@ -3965,29 +3957,26 @@ function CommandPalette({
                           type="button"
                           onClick={() => cmd.perform()}
                           onMouseEnter={() => setSelectedIndex(flatIndex)}
-                          className={`w-full text-left px-3 py-2 rounded-sm transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                            isSelected
-                              ? "bg-[var(--card)] border border-[var(--accent)]/40 shadow-xs"
-                              : "border border-transparent hover:bg-[var(--card)]/60"
-                          }`}
+                          className={`w-full text-left px-3 py-2 rounded-sm transition-all flex items-center justify-between gap-3 cursor-pointer ${isSelected
+                            ? "bg-[var(--card)] border border-[var(--accent)]/40 shadow-xs"
+                            : "border border-transparent hover:bg-[var(--card)]/60"
+                            }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div
-                              className={`w-6 h-6 rounded-xs flex items-center justify-center shrink-0 transition-colors ${
-                                isSelected
-                                  ? "bg-[var(--background)] text-[var(--accent)] border border-[var(--accent)]/40"
-                                  : "text-[var(--muted-foreground)]"
-                              }`}
+                              className={`w-6 h-6 rounded-xs flex items-center justify-center shrink-0 transition-colors ${isSelected
+                                ? "bg-[var(--background)] text-[var(--accent)] border border-[var(--accent)]/40"
+                                : "text-[var(--muted-foreground)]"
+                                }`}
                             >
                               {cmd.icon}
                             </div>
                             <div className="min-w-0">
                               <span
-                                className={`font-body text-xs font-medium block truncate ${
-                                  isSelected
-                                    ? "text-[var(--accent)]"
-                                    : "text-[var(--foreground)]"
-                                }`}
+                                className={`font-body text-xs font-medium block truncate ${isSelected
+                                  ? "text-[var(--accent)]"
+                                  : "text-[var(--foreground)]"
+                                  }`}
                               >
                                 {cmd.title}
                               </span>
@@ -4411,16 +4400,11 @@ function ScrollyParagraph({
 
   const opacity = useTransform(scrollYProgress, [0, 0.85], [0.26, 1])
   const y = useTransform(scrollYProgress, [0, 1], [10, 0])
-  const filter = useTransform(
-    scrollYProgress,
-    [0, 0.85],
-    ["blur(1.2px)", "blur(0px)"],
-  )
 
   return (
     <motion.div
       ref={pRef}
-      style={{ opacity, y, filter }}
+      style={{ opacity, y }}
       className="space-y-1.5 transition-colors duration-200"
     >
       <div className="flex items-center gap-2 mb-1.5">
@@ -5097,24 +5081,21 @@ function Skills() {
                           target.scrollIntoView({ behavior: "smooth" })
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-sm text-left transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-[var(--background)] border border-[var(--accent)] shadow-xs"
-                          : "hover:bg-[var(--background)]/60 border border-transparent"
-                      } ${!isMatchingFilter ? "opacity-40" : "opacity-100"}`}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-sm text-left transition-all cursor-pointer ${isActive
+                        ? "bg-[var(--background)] border border-[var(--accent)] shadow-xs"
+                        : "hover:bg-[var(--background)]/60 border border-transparent"
+                        } ${!isMatchingFilter ? "opacity-40" : "opacity-100"}`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span
-                          className={`font-mono text-xs ${
-                            isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--muted-foreground)]"
-                          }`}
+                          className={`font-mono text-xs ${isActive ? "text-[var(--accent)] font-semibold" : "text-[var(--muted-foreground)]"
+                            }`}
                         >
                           {domain.num}
                         </span>
                         <span
-                          className={`font-body text-xs truncate ${
-                            isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--muted-foreground)]"
-                          }`}
+                          className={`font-body text-xs truncate ${isActive ? "text-[var(--foreground)] font-medium" : "text-[var(--muted-foreground)]"
+                            }`}
                         >
                           {domain.domain}
                         </span>
@@ -5176,11 +5157,10 @@ function Skills() {
                       key={cat.id}
                       type="button"
                       onClick={() => setActiveTab(cat.id)}
-                      className={`px-2.5 py-1 text-[11px] font-body rounded-sm border transition-all cursor-pointer ${
-                        isActive
-                          ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] font-medium shadow-xs"
-                          : "border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)]"
-                      }`}
+                      className={`px-2.5 py-1 text-[11px] font-body rounded-sm border transition-all cursor-pointer ${isActive
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)] font-medium shadow-xs"
+                        : "border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--accent)]"
+                        }`}
                     >
                       {cat.label}
                     </button>
@@ -5381,39 +5361,35 @@ function ExperienceTimelineItem({
       >
         {/* Radar pulse ping effect when active in view or hovered */}
         <span
-          className={`absolute w-7 h-7 rounded-full transition-all duration-500 pointer-events-none ${
-            isRowInView
-              ? "bg-[var(--accent)]/20 animate-ping opacity-75"
-              : "opacity-0 group-hover:opacity-40 group-hover:bg-[var(--accent)]/15 group-hover:animate-ping"
-          }`}
+          className={`absolute w-7 h-7 rounded-full transition-all duration-500 pointer-events-none ${isRowInView
+            ? "bg-[var(--accent)]/20 animate-ping opacity-75"
+            : "opacity-0 group-hover:opacity-40 group-hover:bg-[var(--accent)]/15 group-hover:animate-ping"
+            }`}
         />
 
         {/* Outer Ring Housing */}
         <div
-          className={`relative w-6 h-6 rounded-full border-2 bg-[var(--background)] transition-all duration-300 flex items-center justify-center ${
-            isRowInView
-              ? "border-[var(--accent)] shadow-[0_0_14px_rgba(0,255,136,0.45)] scale-110"
-              : "border-[var(--border)] group-hover:border-[var(--accent)] group-hover:shadow-[0_0_10px_rgba(0,255,136,0.3)]"
-          }`}
+          className={`relative w-6 h-6 rounded-full border-2 bg-[var(--background)] transition-all duration-300 flex items-center justify-center ${isRowInView
+            ? "border-[var(--accent)] shadow-[0_0_14px_rgba(0,255,136,0.45)] scale-110"
+            : "border-[var(--border)] group-hover:border-[var(--accent)] group-hover:shadow-[0_0_10px_rgba(0,255,136,0.3)]"
+            }`}
         >
           {/* Inner Core Bead */}
           <div
-            className={`w-2 h-2 rounded-full transition-all duration-300 ${
-              isRowInView
-                ? "bg-[var(--accent)] scale-125 shadow-[0_0_8px_var(--accent)]"
-                : "bg-[var(--muted-foreground)] group-hover:bg-[var(--accent)]"
-            }`}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${isRowInView
+              ? "bg-[var(--accent)] scale-125 shadow-[0_0_8px_var(--accent)]"
+              : "bg-[var(--muted-foreground)] group-hover:bg-[var(--accent)]"
+              }`}
           />
         </div>
       </div>
 
       {/* Horizontal Circuit Bridge (Connecting Rail to Card on sm+) */}
       <div
-        className={`hidden sm:block absolute left-6 md:left-8 top-10 sm:top-11 md:top-12 h-[1px] w-8 md:w-8 transition-all duration-300 pointer-events-none ${
-          isRowInView
-            ? "bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]"
-            : "bg-[var(--border)] group-hover:bg-[var(--accent)]"
-        }`}
+        className={`hidden sm:block absolute left-6 md:left-8 top-10 sm:top-11 md:top-12 h-[1px] w-8 md:w-8 transition-all duration-300 pointer-events-none ${isRowInView
+          ? "bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]"
+          : "bg-[var(--border)] group-hover:bg-[var(--accent)]"
+          }`}
         aria-hidden="true"
       />
 
@@ -6598,10 +6574,14 @@ export default function App() {
   const [introActive, setIntroActive] = useState(() => {
     // prefers-reduced-motion: skip intro entirely
     if (typeof window !== "undefined") {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      try {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+          return false
+        // sessionStorage: only play once per session
+        if (sessionStorage.getItem("ff-intro-played") === "1") return false
+      } catch {
         return false
-      // sessionStorage: only play once per session
-      if (sessionStorage.getItem("ff-intro-played")) return false
+      }
     }
     return true
   })
@@ -6638,7 +6618,11 @@ export default function App() {
       setIntroActive(false)
       setNameSettling(true)
       document.body.style.overflow = ""
-      sessionStorage.setItem("ff-intro-played", "1")
+      try {
+        sessionStorage.setItem("ff-intro-played", "1")
+      } catch {
+        // ignore storage restrictions
+      }
     }, 2200)
 
     return () => {
@@ -6652,7 +6636,11 @@ export default function App() {
     setIntroActive(false)
     setNameSettling(true)
     document.body.style.overflow = ""
-    sessionStorage.setItem("ff-intro-played", "1")
+    try {
+      sessionStorage.setItem("ff-intro-played", "1")
+    } catch {
+      // ignore storage restrictions
+    }
   }
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
